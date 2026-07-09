@@ -164,21 +164,15 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         player.showTitle(title);
     }
 
-    /**
-     * Đồng bộ dữ liệu SchoolLevel lên thanh cấp độ / kinh nghiệm mặc định của Minecraft (dưới chân màn hình)
-     */
     private void syncVanillaXpBar(Player player) {
         PlayerData data = getPlayerData(player.getUniqueId());
-        
-        // Cài đặt số cấp hiển thị bằng số cấp của SchoolLevel
         player.setLevel(data.level);
         
         if (data.level >= 101) {
-            player.setExp(1.0F); // Đột phá rồi thì đổ đầy thanh XP
+            player.setExp(1.0F);
         } else {
             int req = getRequiredXp(data.level);
             float progress = (float) data.xp / (float) req;
-            // Đảm bảo giá trị luôn nằm trong khoảng từ 0.0 đến 1.0 của Minecraft gán cho thanh kinh nghiệm
             player.setExp(Math.min(1.0F, Math.max(0.0F, progress)));
         }
     }
@@ -217,17 +211,12 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         updatePlayerAttributes(player);
-        syncVanillaXpBar(player); // Đồng bộ khi người chơi vào server
+        syncVanillaXpBar(player);
     }
 
-    /**
-     * Chặn việc người chơi nhặt ngọc kinh nghiệm (Vanilla XP) làm lệch thanh hiển thị
-     */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onVanillaExpChange(PlayerExpChangeEvent event) {
-        // Đặt lượng XP mặc định nhận được về 0, để hệ thống SchoolLevel kiểm soát hoàn toàn thanh này
         event.setAmount(0);
-        // Đồng bộ lại thanh XP để đảm bảo nó không bị lỗi hiển thị trực quan
         syncVanillaXpBar(event.getPlayer());
     }
 
@@ -272,8 +261,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         if (leveledUp) {
             updatePlayerAttributes(player);
         }
-        
-        // Đồng bộ lại thanh kinh nghiệm mặc định sau mỗi lần nhận thêm XP từ việc đập block/giết mob
         syncVanillaXpBar(player);
     }
 
@@ -316,7 +303,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             data.xp = 0;
             
             updatePlayerAttributes(player);
-            syncVanillaXpBar(player); // Cập nhật lại thanh XP sau đột phá
+            syncVanillaXpBar(player);
             
             msg(player, "breakthrough-success");
             
