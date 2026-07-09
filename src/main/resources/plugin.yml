@@ -3,10 +3,10 @@ version: 1.0.0
 main: me.schoollevel.schoollevel.SchoolLevel
 api-version: '1.21'
 author: AI_Developer
-description: Hệ thống cấp độ học đường đồng bộ XP Vanilla, tăng chỉ số máu, damage, speed!
+description: Hệ thống cấp độ học đường tương thích đào diện rộng 3x3 và mở rộng PAPI!
 softdepend: [PlaceholderAPI]
 commands:
   schoollevel:
     description: Lệnh quản trị SchoolLevel
-    aliases: [sl, slevel, dotpha]
+    aliases: [sl, slevel, dotpha, profile]
     permission: schoollevel.use

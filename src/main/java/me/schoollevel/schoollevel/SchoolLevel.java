@@ -1,5 +1,6 @@
 package me.schoollevel.schoollevel;
 
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.title.Title;
@@ -7,6 +8,7 @@ import net.kyori.adventure.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Statistic;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
@@ -22,13 +24,19 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerExpChangeEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,6 +52,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     private NamespacedKey healthKey;
     private NamespacedKey damageKey;
     private NamespacedKey speedKey;
+    private String menuTitleSerialized = "📊 BẢNG THÔNG TIN NGƯỜI CHƠI";
 
     @Override
     public void onEnable() {
@@ -60,7 +69,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new SchoolLevelPlaceholderExpansion(this).register();
-            getLogger().info("Đã tích hợp và kết nối thành công với PlaceholderAPI! 🟢");
+            getLogger().info("Đã kết nối và kích hoạt toàn bộ PlaceholderAPI mở rộng! 🟢");
         }
         
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -68,7 +77,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             syncVanillaXpBar(player);
         }
 
-        getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur/Leaf! 🚀");
+        getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur 1.21+! 🚀");
     }
 
     @Override
@@ -85,6 +94,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         mobXpMap.clear();
 
         FileConfiguration config = getConfig();
+        menuTitleSerialized = config.getString("menu.title", "<dark_gray>📊 BẢNG THÔNG TIN NGƯỜI CHƠI</dark_gray>");
         
         if (config.getConfigurationSection("blocks") != null) {
             for (String key : config.getConfigurationSection("blocks").getKeys(false)) {
@@ -119,7 +129,8 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         return dataCache.computeIfAbsent(uuid, k -> {
             int lvl = dataConfig.getInt(uuid + ".level", 1);
             int xp = dataConfig.getInt(uuid + ".xp", 0);
-            return new PlayerData(lvl, xp);
+            int blocks = dataConfig.getInt(uuid + ".blocks_broken", 0);
+            return new PlayerData(lvl, xp, blocks);
         });
     }
 
@@ -127,6 +138,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         dataCache.forEach((uuid, data) -> {
             dataConfig.set(uuid + ".level", data.level);
             dataConfig.set(uuid + ".xp", data.xp);
+            dataConfig.set(uuid + ".blocks_broken", data.blocksBroken);
         });
         try {
             dataConfig.save(dataFile);
@@ -220,9 +232,18 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         syncVanillaXpBar(event.getPlayer());
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    /**
+     * Mức ưu tiên cao nhất, gỡ bỏ bộ lọc ignoreCancelled để hỗ trợ tính toán 
+     * các sự kiện đập block diện rộng 3x3 từ các plugin bổ trợ khác.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
+        if (p == null) return;
+
+        PlayerData data = getPlayerData(p.getUniqueId());
+        data.blocksBroken++;
+
         int xpToAdd = blockXpMap.getOrDefault(event.getBlock().getType(), 0);
         if (xpToAdd > 0) addXp(p, xpToAdd);
     }
@@ -264,9 +285,108 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         syncVanillaXpBar(player);
     }
 
+    public void openProfileMenu(Player player) {
+        FileConfiguration config = getConfig();
+        int size = config.getInt("menu.size", 27);
+        Component titleComponent = mm.deserialize(menuTitleSerialized);
+        
+        Inventory gui = Bukkit.createInventory(null, size, titleComponent);
+
+        Material fillerMat = Material.valueOf(config.getString("menu.filler.material", "GRAY_STAINED_GLASS_PANE").toUpperCase());
+        ItemStack fillerItem = new ItemStack(fillerMat);
+        ItemMeta fillerMeta = fillerItem.getItemMeta();
+        if (fillerMeta != null) {
+            fillerMeta.displayName(mm.deserialize(config.getString("menu.filler.name", " ")));
+            fillerItem.setItemMeta(fillerMeta);
+        }
+        List<Integer> fillerSlots = config.getIntegerList("menu.filler.slots");
+        for (int slot : fillerSlots) {
+            if (slot < size) gui.setItem(slot, fillerItem);
+        }
+
+        PlayerData data = getPlayerData(player.getUniqueId());
+        int nextXp = data.level >= 101 ? 0 : getRequiredXp(data.level);
+        
+        double totalHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
+        double totalDamage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE) != null ? player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() : 1.0;
+        double totalArmor = player.getAttribute(Attribute.GENERIC_ARMOR) != null ? player.getAttribute(Attribute.GENERIC_ARMOR).getValue() : 0.0;
+        double totalSpeed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED) != null ? player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() : 0.1;
+        int minutesOnline = player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60;
+
+        setupMenuIcon(gui, player, "menu.stats.level", data.level, data.xp, nextXp, totalHealth, totalDamage, totalArmor, totalSpeed, data.blocksBroken, minutesOnline);
+        setupMenuIcon(gui, player, "menu.stats.combat", data.level, data.xp, nextXp, totalHealth, totalDamage, totalArmor, totalSpeed, data.blocksBroken, minutesOnline);
+        setupMenuIcon(gui, player, "menu.stats.activity", data.level, data.xp, nextXp, totalHealth, totalDamage, totalArmor, totalSpeed, data.blocksBroken, minutesOnline);
+
+        String closePath = "menu.close_button";
+        int closeSlot = config.getInt(closePath + ".slot", 16);
+        Material closeMat = Material.valueOf(config.getString(closePath + ".material", "BARRIER").toUpperCase());
+        ItemStack closeItem = new ItemStack(closeMat);
+        ItemMeta closeMeta = closeItem.getItemMeta();
+        if (closeMeta != null) {
+            closeMeta.displayName(mm.deserialize(config.getString(closePath + ".name", "<red>Đóng</red>")));
+            List<String> rawLore = config.getStringList(closePath + ".lore");
+            List<Component> loreComponents = new ArrayList<>();
+            for (String line : rawLore) loreComponents.add(mm.deserialize(line));
+            closeMeta.lore(loreComponents);
+            closeItem.setItemMeta(closeMeta);
+        }
+        gui.setItem(closeSlot, closeItem);
+
+        player.openInventory(gui);
+    }
+
+    private void setupMenuIcon(Inventory gui, Player player, String path, int level, int xp, int nextXp, double health, double damage, double armor, double speed, int blocks, int minutes) {
+        FileConfiguration config = getConfig();
+        if (config.get(path) == null) return;
+
+        int slot = config.getInt(path + ".slot");
+        Material mat = Material.valueOf(config.getString(path + ".material", "STONE").toUpperCase());
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            String name = config.getString(path + ".name", "");
+            meta.displayName(mm.deserialize(name));
+
+            List<String> rawLore = config.getStringList(path + ".lore");
+            List<Component> loreComponents = new ArrayList<>();
+
+            for (String line : rawLore) {
+                String replaced = line
+                        .replace("%level%", String.valueOf(level))
+                        .replace("%xp%", String.valueOf(xp))
+                        .replace("%next_xp%", level >= 101 ? "MAX" : String.valueOf(nextXp))
+                        .replace("%damage%", String.format("%.1f", damage))
+                        .replace("%health%", String.format("%.1f", health))
+                        .replace("%health_hearts%", String.valueOf((int)(health / 2)))
+                        .replace("%armor%", String.format("%.1f", armor))
+                        .replace("%speed%", String.format("%.3f", speed))
+                        .replace("%blocks_broken%", String.valueOf(blocks))
+                        .replace("%time_online%", String.valueOf(minutes));
+                loreComponents.add(mm.deserialize(replaced));
+            }
+            meta.lore(loreComponents);
+            item.setItemMeta(meta);
+        }
+        gui.setItem(slot, item);
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getView().title().equals(mm.deserialize(menuTitleSerialized))) {
+            event.setCancelled(true);
+            int slot = event.getRawSlot();
+            int closeSlot = getConfig().getInt("menu.close_button.slot", 16);
+            if (slot == closeSlot) {
+                event.getWhoClicked().closeInventory();
+            }
+        }
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         boolean isBreakCommand = label.equalsIgnoreCase("dotpha") || (args.length > 0 && (args[0].equalsIgnoreCase("break") || args[0].equalsIgnoreCase("dotpha")));
+        boolean isMenuCommand = label.equalsIgnoreCase("profile") || (args.length > 0 && args[0].equalsIgnoreCase("menu"));
 
         if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             if (!sender.hasPermission("schoollevel.admin")) {
@@ -274,18 +394,21 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
                 return true;
             }
             loadConfigData();
-            
             for (Player p : Bukkit.getOnlinePlayers()) {
                 updatePlayerAttributes(p);
                 syncVanillaXpBar(p);
             }
-            
             msg(sender, "reload");
             return true;
         }
 
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Chỉ có người chơi mới có thể thực hiện lệnh này!");
+            return true;
+        }
+
+        if (isMenuCommand) {
+            openProfileMenu(player);
             return true;
         }
 
@@ -304,7 +427,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             
             updatePlayerAttributes(player);
             syncVanillaXpBar(player);
-            
             msg(player, "breakthrough-success");
             
             player.showTitle(Title.title(
@@ -327,10 +449,12 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     public static class PlayerData {
         public int level;
         public int xp;
+        public int blocksBroken;
 
-        PlayerData(int level, int xp) {
+        PlayerData(int level, int xp, int blocksBroken) {
             this.level = level;
             this.xp = xp;
+            this.blocksBroken = blocksBroken;
         }
     }
 
@@ -343,29 +467,17 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         }
 
         @Override
-        public String getIdentifier() {
-            return "schoollevel";
-        }
-
+        public String getIdentifier() { return "schoollevel"; }
         @Override
-        public String getAuthor() {
-            return "AI_Developer";
-        }
-
+        public String getAuthor() { return "AI_Developer"; }
         @Override
-        public String getVersion() {
-            return "1.0.0";
-        }
-
+        public String getVersion() { return "1.0.0"; }
         @Override
-        public boolean persist() {
-            return true; 
-        }
+        public boolean persist() { return true; }
 
         @Override
         public String onPlaceholderRequest(Player player, String params) {
             if (player == null) return "";
-
             PlayerData data = plugin.getPlayerData(player.getUniqueId());
 
             switch (params.toLowerCase()) {
@@ -373,15 +485,32 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
                     return String.valueOf(data.level);
                 case "level_formatted":
                     String rawFormat = plugin.getConfig().getString("settings.papi-level-formatted", "⭐ <gradient:#ff5f6d:#ffc371>Level %level%</gradient>");
-                    String withVal = rawFormat.replace("%level%", String.valueOf(data.level));
-                    return LegacyComponentSerializer.legacySection().serialize(mm.deserialize(withVal));
+                    return LegacyComponentSerializer.legacySection().serialize(mm.deserialize(rawFormat.replace("%level%", String.valueOf(data.level))));
                 case "xp":
                     return String.valueOf(data.xp);
                 case "required_xp":
                     return data.level >= 101 ? "0" : String.valueOf(plugin.getRequiredXp(data.level));
                 case "xp_progress":
-                    int reqXp = plugin.getRequiredXp(data.level);
-                    return data.level >= 101 ? "MAX" : (data.xp + "/" + reqXp);
+                    return data.level >= 101 ? "MAX" : (data.xp + "/" + plugin.getRequiredXp(data.level));
+                case "blocks_broken":
+                    return String.valueOf(data.blocksBroken);
+                case "minutes_online":
+                    return String.valueOf(player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60);
+                case "damage":
+                    double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE) != null ? player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() : 1.0;
+                    return String.format("%.1f", damage);
+                case "health":
+                    double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
+                    return String.format("%.1f", health);
+                case "health_hearts":
+                    double h = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
+                    return String.valueOf((int)(h / 2));
+                case "armor":
+                    double armor = player.getAttribute(Attribute.GENERIC_ARMOR) != null ? player.getAttribute(Attribute.GENERIC_ARMOR).getValue() : 0.0;
+                    return String.format("%.1f", armor);
+                case "speed":
+                    double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED) != null ? player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() : 0.1;
+                    return String.format("%.3f", speed);
                 default:
                     return null;
             }
