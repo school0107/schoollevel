@@ -3,9 +3,10 @@ version: 1.0.0
 main: me.schoollevel.schoollevel.SchoolLevel
 api-version: '1.21'
 author: AI_Developer
-description: Hệ thống cấp độ học đường khi đào block và giết mob với cơ chế đột phá!
+description: Hệ thống cấp độ học đường với PAPI Placeholders, Title thăng cấp và đột phá!
+softdepend: [PlaceholderAPI]
 commands:
   schoollevel:
     description: Lệnh quản trị SchoolLevel
-    aliases: [sl, slevel]
-    permission: schoollevel.admin
+    aliases: [sl, slevel, dotpha]
+    permission: schoollevel.use
