@@ -11,14 +11,21 @@ messages:
   no-permission: "<#ff3333>❌ Bạn không có quyền sử dụng lệnh này."
   level-up: "<#56ab2f>🎉 Chúc mừng! Bạn đã thăng cấp lên <#a8ff78><b>Level %level%</b></#a8ff78>! 🚀"
   breakthrough-success: "<#f12711>🔥 <b>ĐỘT PHÁ THÀNH CÔNG!</b> Bạn đã vượt qua giới hạn phàm trần để lên <#f5af19><b>Level 101</b></#f5af19>! 👑"
-  breakthrough-needed: "<#ff3333>⚠️ Bạn đã đạt cấp 100! Sử dụng lệnh <#ffff00>/sl break</#ffff00> để đột phá lên cấp 101! 🧩"
+  breakthrough-needed: "<#ff3333>⚠️ Bạn đã đạt cấp 100! Sử dụng lệnh <#ffff00>/sl break</#ffff00> hoặc <#ffff00>/sl dotpha</#ffff00> để đột phá lên cấp 101! 🧩"
   status: "<#00c6ff>📊 Trạng thái của bạn: <#0072ff>Level %level%</#0072ff> | <#fddb3a>XP: %xp%/%next_xp%</#fddb3a> ⭐"
   not-max: "<#ff3333>❌ Bạn chưa đạt Level 100 để thực hiện đột phá."
   already-break: "<#ff3333>❌ Bạn đã đột phá lên Level 101 từ trước rồi!"
+  
+  # Cấu hình Title & Subtitle khi người chơi lên cấp (Hỗ trợ RGB MiniMessage)
+  level-up-title: "<gradient:#ffe259:#ffa751><b>⭐ LÊN CẤP ⭐</b></gradient>"
+  level-up-subtitle: "<#56ab2f>Bạn đã đạt tới <#a8ff78><b>Cấp %level%</b></#a8ff78>!"
 
 settings:
   base-xp: 100
   xp-multiplier: 1.5
+  
+  # Định dạng hiển thị cho %schoollevel_level_formatted%
+  papi-level-formatted: "⭐ <gradient:#ff5f6d:#ffc371><b>Level %level%</b></gradient>"
 
 # Kinh nghiệm nhận được từ Blocks
 blocks:
