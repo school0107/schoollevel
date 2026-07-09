@@ -1,0 +1,57 @@
+#   ____       _                 _ _                    _ 
+#  / ___|  ___| |__   ___   ___ | | |    _____   _____ | |
+#  \___ \ / __| '_ \ / _ \ / _ \| | |   / _ \ \ / / _ \| |
+#   ___) | (__| | | | (_) | (_) | | |__|  __/\ V /  __/| |
+#  |____/ \___|_| |_|\___/ \___/|_|_____\___| \_/ \___||_|
+# Fully optimized for Paper/Purpur/Leaf 1.21+ (Java 21)
+
+messages:
+  prefix: "<gradient:#ff5f6d:#ffc371><b>[SchoolLevel]</b></gradient> "
+  reload: "<#00ffcc>⚡ Cấu hình đã được tải lại thành công! 📝"
+  no-permission: "<#ff3333>❌ Bạn không có quyền sử dụng lệnh này."
+  level-up: "<#56ab2f>🎉 Chúc mừng! Bạn đã thăng cấp lên <#a8ff78><b>Level %level%</b></#a8ff78>! 🚀"
+  breakthrough-success: "<#f12711>🔥 <b>ĐỘT PHÁ THÀNH CÔNG!</b> Bạn đã vượt qua giới hạn phàm trần để lên <#f5af19><b>Level 101</b></#f5af19>! 👑"
+  breakthrough-needed: "<#ff3333>⚠️ Bạn đã đạt cấp 100! Sử dụng lệnh <#ffff00>/sl break</#ffff00> để đột phá lên cấp 101! 🧩"
+  status: "<#00c6ff>📊 Trạng thái của bạn: <#0072ff>Level %level%</#0072ff> | <#fddb3a>XP: %xp%/%next_xp%</#fddb3a> ⭐"
+  not-max: "<#ff3333>❌ Bạn chưa đạt Level 100 để thực hiện đột phá."
+  already-break: "<#ff3333>❌ Bạn đã đột phá lên Level 101 từ trước rồi!"
+
+settings:
+  base-xp: 100
+  xp-multiplier: 1.5
+
+# Kinh nghiệm nhận được từ Blocks
+blocks:
+  STONE: 1
+  COAL_ORE: 5
+  DEEPSLATE_COAL_ORE: 5
+  IRON_ORE: 10
+  DEEPSLATE_IRON_ORE: 10
+  GOLD_ORE: 15
+  DEEPSLATE_GOLD_ORE: 15
+  REDSTONE_ORE: 12
+  DEEPSLATE_REDSTONE_ORE: 12
+  LAPIS_ORE: 15
+  DEEPSLATE_LAPIS_ORE: 15
+  DIAMOND_ORE: 30
+  DEEPSLATE_DIAMOND_ORE: 30
+  EMERALD_ORE: 50
+  DEEPSLATE_EMERALD_ORE: 50
+  NETHER_QUARTZ_ORE: 8
+  NETHER_GOLD_ORE: 8
+  ANCIENT_DEBRIS: 100
+
+# Kinh nghiệm nhận được từ Mobs
+mobs:
+  ZOMBIE: 5
+  SKELETON: 5
+  CREEPER: 8
+  SPIDER: 5
+  ENDERMAN: 15
+  PIGLIN: 6
+  BLAZE: 12
+  GHAST: 20
+  WITHER_SKELETON: 15
+  WARDEN: 500
+  WITHER: 1000
+  ENDER_DRAGON: 2000
