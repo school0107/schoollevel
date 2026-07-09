@@ -3,7 +3,7 @@ version: 1.0.0
 main: me.schoollevel.schoollevel.SchoolLevel
 api-version: '1.21'
 author: AI_Developer
-description: Hệ thống cấp độ học đường với PAPI Placeholders, Title thăng cấp và đột phá!
+description: Hệ thống cấp độ học đường đồng bộ XP Vanilla, tăng chỉ số máu, damage, speed!
 softdepend: [PlaceholderAPI]
 commands:
   schoollevel:
