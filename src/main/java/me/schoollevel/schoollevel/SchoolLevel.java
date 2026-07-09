@@ -22,15 +22,19 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,6 +56,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     private NamespacedKey healthKey;
     private NamespacedKey damageKey;
     private NamespacedKey speedKey;
+    private NamespacedKey itemKey;
     private String menuTitleSerialized = "📊 BẢNG THÔNG TIN NGƯỜI CHƠI";
 
     @Override
@@ -63,6 +68,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         healthKey = new NamespacedKey(this, "schoollevel_health");
         damageKey = new NamespacedKey(this, "schoollevel_damage");
         speedKey = new NamespacedKey(this, "schoollevel_speed");
+        itemKey = new NamespacedKey(this, "breakthrough_item");
         
         getServer().getPluginManager().registerEvents(this, this);
         getCommand("schoollevel").setExecutor(this);
@@ -77,6 +83,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             syncVanillaXpBar(player);
         }
 
+        startActionBarTask();
         getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur 1.21+! 🚀");
     }
 
@@ -219,6 +226,116 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         if (speed != null) speed.removeModifier(speedKey);
     }
 
+    private void startActionBarTask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                FileConfiguration config = getConfig();
+                if (!config.getBoolean("actionbar.enabled", true)) return;
+
+                String format = config.getString("actionbar.format", "");
+                if (format.isEmpty()) return;
+
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    PlayerData data = getPlayerData(player.getUniqueId());
+                    int nextXp = data.level >= 101 ? 0 : getRequiredXp(data.level);
+                    
+                    double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
+                    double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE) != null ? player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() : 1.0;
+                    double armor = player.getAttribute(Attribute.GENERIC_ARMOR) != null ? player.getAttribute(Attribute.GENERIC_ARMOR).getValue() : 0.0;
+                    
+                    String pb = "MAX";
+                    if (data.level < 101 && nextXp > 0) {
+                        int totalBars = 10;
+                        int filledBars = (int) (((double) data.xp / nextXp) * totalBars);
+                        filledBars = Math.min(totalBars, Math.max(0, filledBars));
+                        pb = "■".repeat(filledBars) + "□".repeat(totalBars - filledBars);
+                    }
+
+                    String text = format
+                            .replace("%level%", String.valueOf(data.level))
+                            .replace("%xp%", String.valueOf(data.xp))
+                            .replace("%next_xp%", data.level >= 101 ? "MAX" : String.valueOf(nextXp))
+                            .replace("%progress_bar%", pb)
+                            .replace("%health%", String.format("%.0f", player.getHealth()))
+                            .replace("%max_health%", String.format("%.0f", health))
+                            .replace("%damage%", String.format("%.1f", damage))
+                            .replace("%armor%", String.format("%.1f", armor));
+
+                    player.sendActionBar(mm.deserialize(text));
+                }
+            }
+        }.runTaskTimer(this, 0L, 20L);
+    }
+
+    private ItemStack createBreakthroughItem() {
+        FileConfiguration config = getConfig();
+        String path = "breakthrough-item";
+        
+        Material mat = Material.valueOf(config.getString(path + ".material", "NETHER_STAR").toUpperCase());
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(mm.deserialize(config.getString(path + ".name", "<gradient:#f12711:#f5af19><b>🔥 ĐÁ ĐỘT PHÁ THẦN CẤP 🔥</b></gradient>")));
+            List<String> rawLore = config.getStringList(path + ".lore");
+            List<Component> lore = new ArrayList<>();
+            for (String line : rawLore) {
+                lore.add(mm.deserialize(line));
+            }
+            meta.lore(lore);
+            meta.setCustomModelData(config.getInt(path + ".custom-model-data", 0));
+            meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "true");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        
+        Player player = event.getPlayer();
+        ItemStack item = event.getItem();
+        if (item == null || item.getType() == Material.AIR) return;
+        if (!item.hasItemMeta()) return;
+        
+        ItemMeta meta = item.getItemMeta();
+        if (!meta.getPersistentDataContainer().has(itemKey, PersistentDataType.STRING)) return;
+        
+        event.setCancelled(true);
+        PlayerData data = getPlayerData(player.getUniqueId());
+        
+        if (data.level < 100) {
+            msg(player, "not-max");
+            return;
+        }
+        if (data.level >= 101) {
+            msg(player, "already-break");
+            return;
+        }
+        
+        item.setAmount(item.getAmount() - 1);
+        data.level = 101;
+        data.xp = 0;
+        
+        updatePlayerAttributes(player);
+        syncVanillaXpBar(player);
+        msg(player, "breakthrough-success");
+        
+        player.showTitle(Title.title(
+                mm.deserialize("<gradient:#f12711:#f5af19><b>🔥 ĐỘT PHÁ THÀNH CÔNG 🔥</b></gradient>"),
+                mm.deserialize("<#ffff00>Đã phá vỡ giới hạn để đạt cấp 101! 👑"),
+                Title.Times.times(Ticks.duration(15), Ticks.duration(60), Ticks.duration(15))
+        ));
+
+        List<String> commands = getConfig().getStringList("breakthrough-item.commands-on-success");
+        for (String cmd : commands) {
+            String executable = cmd.replace("%player%", player.getName());
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executable);
+        }
+    }
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
@@ -232,10 +349,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         syncVanillaXpBar(event.getPlayer());
     }
 
-    /**
-     * Mức ưu tiên cao nhất, gỡ bỏ bộ lọc ignoreCancelled để hỗ trợ tính toán 
-     * các sự kiện đập block diện rộng 3x3 từ các plugin bổ trợ khác.
-     */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
@@ -385,9 +498,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        boolean isBreakCommand = label.equalsIgnoreCase("dotpha") || (args.length > 0 && (args[0].equalsIgnoreCase("break") || args[0].equalsIgnoreCase("dotpha")));
-        boolean isMenuCommand = label.equalsIgnoreCase("profile") || (args.length > 0 && args[0].equalsIgnoreCase("menu"));
-
         if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             if (!sender.hasPermission("schoollevel.admin")) {
                 msg(sender, "no-permission");
@@ -402,38 +512,30 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             return true;
         }
 
+        if (args.length > 1 && args[0].equalsIgnoreCase("giveitem")) {
+            if (!sender.hasPermission("schoollevel.admin")) {
+                msg(sender, "no-permission");
+                return true;
+            }
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage("❌ Không tìm thấy người chơi có tên " + args[1]);
+                return true;
+            }
+            ItemStack bItem = createBreakthroughItem();
+            target.getInventory().addItem(bItem);
+            sender.sendMessage("🟢 Đã cấp 1 Vật phẩm Đột Phá cho người chơi " + target.getName());
+            target.sendMessage(mm.deserialize(getConfig().getString("messages.prefix") + "<#00ffcc>Bạn nhận được Vật phẩm Đột Phá từ quản trị viên! 🎉"));
+            return true;
+        }
+
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Chỉ có người chơi mới có thể thực hiện lệnh này!");
             return true;
         }
 
-        if (isMenuCommand) {
+        if (label.equalsIgnoreCase("profile") || (args.length > 0 && args[0].equalsIgnoreCase("menu"))) {
             openProfileMenu(player);
-            return true;
-        }
-
-        if (isBreakCommand) {
-            PlayerData data = getPlayerData(player.getUniqueId());
-            if (data.level < 100) {
-                msg(player, "not-max");
-                return true;
-            }
-            if (data.level >= 101) {
-                msg(player, "already-break");
-                return true;
-            }
-            data.level = 101;
-            data.xp = 0;
-            
-            updatePlayerAttributes(player);
-            syncVanillaXpBar(player);
-            msg(player, "breakthrough-success");
-            
-            player.showTitle(Title.title(
-                    mm.deserialize("<gradient:#f12711:#f5af19><b>🔥 ĐỘT PHÁ THÀNH CÔNG 🔥</b></gradient>"),
-                    mm.deserialize("<#ffff00>Đã phá vỡ giới hạn để đạt cấp 101! 👑"),
-                    Title.Times.times(Ticks.duration(15), Ticks.duration(60), Ticks.duration(15))
-            ));
             return true;
         }
 

@@ -4,9 +4,9 @@ messages:
   no-permission: "<#ff3333>❌ Bạn không có quyền sử dụng lệnh này."
   level-up: "<#56ab2f>🎉 Chúc mừng! Bạn đã thăng cấp lên <#a8ff78><b>Level %level%</b></#a8ff78>! 🚀"
   breakthrough-success: "<#f12711>🔥 <b>ĐỘT PHÁ THÀNH CÔNG!</b> Bạn đã vượt qua giới hạn phàm trần để lên <#f5af19><b>Level 101</b></#f5af19>! 👑"
-  breakthrough-needed: "<#ff3333>⚠️ Bạn đã đạt cấp 100! Sử dụng lệnh <#ffff00>/sl break</#ffff00> hoặc <#ffff00>/sl dotpha</#ffff00> để đột phá lên cấp 101! 🧩"
+  breakthrough-needed: "<#ff3333>⚠️ Bạn đã đạt cấp 100! Hãy sử dụng <b>Đá Đột Phá</b> (Chuột phải trên tay) để thăng hoa lên cấp 101! 🧩"
   status: "<#00c6ff>📊 Trạng thái của bạn: <#0072ff>Level %level%</#0072ff> | <#fddb3a>XP: %xp%/%next_xp%</#fddb3a> ⭐"
-  not-max: "<#ff3333>❌ Bạn chưa đạt Level 100 để thực hiện đột phá."
+  not-max: "<#ff3333>❌ Bạn chưa đạt Level 100 để sử dụng vật phẩm đột phá."
   already-break: "<#ff3333>❌ Bạn đã đột phá lên Level 101 từ trước rồi!"
   
   level-up-title: "<gradient:#ffe259:#ffa751><b>⭐ LÊN CẤP ⭐</b></gradient>"
@@ -16,6 +16,28 @@ settings:
   base-xp: 100
   xp-multiplier: 1.5
   papi-level-formatted: "⭐ <gradient:#ff5f6d:#ffc371><b>Level %level%</b></gradient>"
+
+# Cấu hình thanh ActionBar động hiển thị cho người chơi (Cập nhật mỗi giây)
+actionbar:
+  enabled: true
+  # Các biến hỗ trợ: %level%, %xp%, %next_xp%, %progress_bar%, %health%, %max_health%, %damage%, %armor%
+  format: "<#00ffcc>Cấp: <#ffff00>%level% </#ffff00><gray>[<#ff3366>%progress_bar%<gray>] <#fddb3a>%xp%/%next_xp% XP <gray>| <#ff3333>❤️ %health%/%max_health% <gray>| <#red>🗡️ %damage% <gray>| <#blue>🛡️ %armor%"
+
+# Cấu hình Vật phẩm Đột Phá custom của plugin
+breakthrough-item:
+  material: "NETHER_STAR"
+  name: "<gradient:#f12711:#f5af19><b>🔥 ĐÁ ĐỘT PHÁ THẦN CẤP 🔥</b></gradient>"
+  custom-model-data: 10001 # Đặt ID để liên kết với Resource Pack nếu muốn
+  lore:
+    - "<gray>Vật phẩm chứa đựng năng lượng thiên giới."
+    - ""
+    - "<#ffff00>Yêu cầu: <gradient:#ff5f6d:#ffc371>Đạt Level 100</gradient>"
+    - "<#00ffcc>Tác dụng: <white>Chuột phải khi cầm trên tay"
+    - "<white>để phá vỡ giới hạn lên <#f5af19><b>Level 101</b></#f5af19>."
+  # Các lệnh Console sẽ thực thi ngay khi người chơi sử dụng vật phẩm thành công
+  commands-on-success:
+    - "give %player% diamond 1"
+    - "broadcast <gradient:#ff5f6d:#ffc371> Người chơi %player% vừa sử dụng Đá Thần Cấp đột phá thành công! 👑"
 
 menu:
   title: "<dark_gray>📊 BẢNG THÔNG TIN NGƯỜI CHƠI</dark_gray>"
@@ -64,35 +86,35 @@ menu:
         - "<gray>Bấm để thoát khỏi menu"
 
 blocks:
-  STONE: 1
-  COAL_ORE: 5
-  DEEPSLATE_COAL_ORE: 5
-  IRON_ORE: 10
-  DEEPSLATE_IRON_ORE: 10
-  GOLD_ORE: 15
+  STONE: 5
+  COAL_ORE: 10
+  DEEPSLATE_COAL_ORE: 10
+  IRON_ORE: 40
+  DEEPSLATE_IRON_ORE: 40
+  GOLD_ORE: 55
   DEEPSLATE_GOLD_ORE: 15
-  REDSTONE_ORE: 12
+  REDSTONE_ORE: 42
   DEEPSLATE_REDSTONE_ORE: 12
-  LAPIS_ORE: 15
+  LAPIS_ORE: 35
   DEEPSLATE_LAPIS_ORE: 15
-  DIAMOND_ORE: 30
+  DIAMOND_ORE: 100
   DEEPSLATE_DIAMOND_ORE: 30
-  EMERALD_ORE: 50
+  EMERALD_ORE: 150
   DEEPSLATE_EMERALD_ORE: 50
   NETHER_QUARTZ_ORE: 8
-  NETHER_GOLD_ORE: 8
+  NETHER_GOLD_ORE: 300
   ANCIENT_DEBRIS: 100
 
 mobs:
-  ZOMBIE: 5
-  SKELETON: 5
-  CREEPER: 8
-  SPIDER: 5
-  ENDERMAN: 15
-  PIGLIN: 6
-  BLAZE: 12
-  GHAST: 20
-  WITHER_SKELETON: 15
-  WARDEN: 500
-  WITHER: 1000
-  ENDER_DRAGON: 2000
+  ZOMBIE: 200
+  SKELETON: 300
+  CREEPER: 500
+  SPIDER: 500
+  ENDERMAN: 1500
+  PIGLIN: 600
+  BLAZE: 1200
+  GHAST: 2000
+  WITHER_SKELETON: 1500
+  WARDEN: 50000
+  WITHER: 10000
+  ENDER_DRAGON: 20000
