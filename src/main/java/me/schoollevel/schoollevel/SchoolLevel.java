@@ -59,6 +59,11 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     private NamespacedKey itemKey;
     private String menuTitleSerialized = "📊 BẢNG THÔNG TIN NGƯỜI CHƠI";
 
+    // Các biến lưu tỷ lệ đọc từ config
+    private double healthPercentPerLevel = 0.01;
+    private double damagePercentPerLevel = 0.01;
+    private double speedPercentPerLevel = 0.005;
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -71,7 +76,10 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         itemKey = new NamespacedKey(this, "breakthrough_item");
         
         getServer().getPluginManager().registerEvents(this, this);
-        getCommand("schoollevel").setExecutor(this);
+        
+        // Đăng ký lệnh cho cả /schoollevel và /profile
+        if (getCommand("schoollevel") != null) getCommand("schoollevel").setExecutor(this);
+        if (getCommand("profile") != null) getCommand("profile").setExecutor(this);
         
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new SchoolLevelPlaceholderExpansion(this).register();
@@ -101,8 +109,13 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         mobXpMap.clear();
 
         FileConfiguration config = getConfig();
-        menuTitleSerialized = config.getString("menu.title", "<dark_gray>📊 BẢNG THÔNG TIN NGƯỜI CHƠI</dark_gray>");
+        menuTitleSerialized = config.getString("menu.title", "📊 BẢNG THÔNG TIN NGƯỜI CHƠI");
         
+        // Đọc tỷ lệ cấu hình từ mục stats-per-level
+        healthPercentPerLevel = config.getDouble("stats-per-level.health", 0.01);
+        damagePercentPerLevel = config.getDouble("stats-per-level.damage", 0.01);
+        speedPercentPerLevel = config.getDouble("stats-per-level.speed", 0.005);
+
         if (config.getConfigurationSection("blocks") != null) {
             for (String key : config.getConfigurationSection("blocks").getKeys(false)) {
                 try {
@@ -156,7 +169,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
 
     public int getRequiredXp(int level) {
         int base = getConfig().getInt("settings.base-xp", 100);
-        double mult = getConfig().getDouble("settings.xp-multiplier", 1.5);
+        double mult = getConfig().getDouble("settings.xp-multiplier", 1.1);
         return (int) (base * Math.pow(mult, level - 1));
     }
 
@@ -196,13 +209,17 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         }
     }
 
+    // Cập nhật thuộc tính dựa theo tỷ lệ % trong config tương ứng từng chỉ số
     private void updatePlayerAttributes(Player player) {
         PlayerData data = getPlayerData(player.getUniqueId());
-        double percentBonus = data.level * 0.01;
 
-        applyModifier(player, Attribute.GENERIC_MAX_HEALTH, healthKey, percentBonus);
-        applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, damageKey, percentBonus);
-        applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, speedKey, percentBonus);
+        double healthBonus = data.level * healthPercentPerLevel;
+        double damageBonus = data.level * damagePercentPerLevel;
+        double speedBonus = data.level * speedPercentPerLevel;
+
+        applyModifier(player, Attribute.GENERIC_MAX_HEALTH, healthKey, healthBonus);
+        applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, damageKey, damageBonus);
+        applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, speedKey, speedBonus);
     }
 
     private void applyModifier(Player player, Attribute attribute, NamespacedKey key, double amount) {
@@ -431,7 +448,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         setupMenuIcon(gui, player, "menu.stats.activity", data.level, data.xp, nextXp, totalHealth, totalDamage, totalArmor, totalSpeed, data.blocksBroken, minutesOnline);
 
         String closePath = "menu.close_button";
-        int closeSlot = config.getInt(closePath + ".slot", 16);
+        int closeSlot = config.getInt(closePath + ".slot", 22);
         Material closeMat = Material.valueOf(config.getString(closePath + ".material", "BARRIER").toUpperCase());
         ItemStack closeItem = new ItemStack(closeMat);
         ItemMeta closeMeta = closeItem.getItemMeta();
@@ -489,7 +506,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         if (event.getView().title().equals(mm.deserialize(menuTitleSerialized))) {
             event.setCancelled(true);
             int slot = event.getRawSlot();
-            int closeSlot = getConfig().getInt("menu.close_button.slot", 16);
+            int closeSlot = getConfig().getInt("menu.close_button.slot", 22);
             if (slot == closeSlot) {
                 event.getWhoClicked().closeInventory();
             }
@@ -498,7 +515,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+        if (command.getName().equalsIgnoreCase("schoollevel") && args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             if (!sender.hasPermission("schoollevel.admin")) {
                 msg(sender, "no-permission");
                 return true;
@@ -512,7 +529,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             return true;
         }
 
-        if (args.length > 1 && args[0].equalsIgnoreCase("giveitem")) {
+        if (command.getName().equalsIgnoreCase("schoollevel") && args.length > 1 && args[0].equalsIgnoreCase("giveitem")) {
             if (!sender.hasPermission("schoollevel.admin")) {
                 msg(sender, "no-permission");
                 return true;
@@ -534,7 +551,8 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             return true;
         }
 
-        if (label.equalsIgnoreCase("profile") || (args.length > 0 && args[0].equalsIgnoreCase("menu"))) {
+        // Xử lý mở Menu khi gõ lệnh /profile hoặc /schoollevel menu
+        if (command.getName().equalsIgnoreCase("profile") || (args.length > 0 && args[0].equalsIgnoreCase("menu"))) {
             openProfileMenu(player);
             return true;
         }
@@ -586,7 +604,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
                 case "level":
                     return String.valueOf(data.level);
                 case "level_formatted":
-                    String rawFormat = plugin.getConfig().getString("settings.papi-level-formatted", "⭐ <gradient:#ff5f6d:#ffc371>Level %level%</gradient>");
+                    String rawFormat = plugin.getConfig().getString("settings.papi-level-formatted", "⭐ %level%");
                     return LegacyComponentSerializer.legacySection().serialize(mm.deserialize(rawFormat.replace("%level%", String.valueOf(data.level))));
                 case "xp":
                     return String.valueOf(data.xp);

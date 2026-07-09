@@ -1,90 +1,47 @@
-messages:
-  prefix: "<gradient:#ff5f6d:#ffc371><b>[SchoolLevel]</b></gradient> "
-  reload: "<#00ffcc>⚡ Cấu hình đã được tải lại thành công! 📝"
-  no-permission: "<#ff3333>❌ Bạn không có quyền sử dụng lệnh này."
-  level-up: "<#56ab2f>🎉 Chúc mừng! Bạn đã thăng cấp lên <#a8ff78><b>Level %level%</b></#a8ff78>! 🚀"
-  breakthrough-success: "<#f12711>🔥 <b>ĐỘT PHÁ THÀNH CÔNG!</b> Bạn đã vượt qua giới hạn phàm trần để lên <#f5af19><b>Level 101</b></#f5af19>! 👑"
-  breakthrough-needed: "<#ff3333>⚠️ Bạn đã đạt cấp 100! Hãy sử dụng <b>Đá Đột Phá</b> (Chuột phải trên tay) để thăng hoa lên cấp 101! 🧩"
-  status: "<#00c6ff>📊 Trạng thái của bạn: <#0072ff>Level %level%</#0072ff> | <#fddb3a>XP: %xp%/%next_xp%</#fddb3a> ⭐"
-  not-max: "<#ff3333>❌ Bạn chưa đạt Level 100 để sử dụng vật phẩm đột phá."
-  already-break: "<#ff3333>❌ Bạn đã đột phá lên Level 101 từ trước rồi!"
-  
-  level-up-title: "<gradient:#ffe259:#ffa751><b>⭐ LÊN CẤP ⭐</b></gradient>"
-  level-up-subtitle: "<#56ab2f>Bạn đã đạt tới <#a8ff78><b>Cấp %level%</b></#a8ff78>!"
+# ==========================================
+#         SchoolLevel Configuration
+# ==========================================
 
 settings:
+  # Lượng XP cơ bản cần để lên cấp 2
   base-xp: 100
-  xp-multiplier: 1.5
-  papi-level-formatted: "⭐ <gradient:#ff5f6d:#ffc371><b>Level %level%</b></gradient>"
+  # Hệ số nhân XP tăng thêm theo từng cấp (Công thức: base * multiplier^(level-1))
+  xp-multiplier: 1.1
+  # Định dạng hiển thị PlaceholderAPI %schoollevel_level_formatted%
+  papi-level-formatted: "⭐%level%"
 
-# Cấu hình thanh ActionBar động hiển thị cho người chơi (Cập nhật mỗi giây)
-actionbar:
-  enabled: true
-  # Các biến hỗ trợ: %level%, %xp%, %next_xp%, %progress_bar%, %health%, %max_health%, %damage%, %armor%
-  format: "<#00ffcc>Cấp: <#ffff00>%level% </#ffff00><gray>[<#ff3366>%progress_bar%<gray>] <#fddb3a>%xp%/%next_xp% XP <gray>| <#ff3333>❤️ %health%/%max_health% <gray>| <#red>🗡️ %damage% <gray>| <#blue>🛡️ %armor%"
+# ------------------------------------------
+# TÙY CHỈNH CHỈ SỐ TĂNG TIỂN THEO % MỖI CẤP
+# ------------------------------------------
+# Giá trị nhập vào là hệ số thập phân (Ví dụ: 0.01 = 1%, 0.005 = 0.5%)
+# Tổng % cộng thêm = Số cấp * Hệ số cấu hình
+stats-per-level:
+  health: 0.01       # 0.01 tức là tăng 1% Máu gốc mỗi cấp (Cấp 50 tăng 50% Máu)
+  damage: 0.01       # 0.01 tức là tăng 1% Sát thương cận chiến gốc mỗi cấp
+  speed: 0.005       # 0.005 tức là tăng 0.5% Tốc độ di chuyển gốc mỗi cấp
 
-# Cấu hình Vật phẩm Đột Phá custom của plugin
+# ------------------------------------------
+# VẬT PHẨM ĐỘT PHÁ (Từ Cấp 100 lên 101)
+# ------------------------------------------
 breakthrough-item:
   material: "NETHER_STAR"
-  name: "<gradient:#f12711:#f5af19><b>🔥 ĐÁ ĐỘT PHÁ THẦN CẤP 🔥</b></gradient>"
-  custom-model-data: 10001 # Đặt ID để liên kết với Resource Pack nếu muốn
+  name: "<gradient:#ff007f:#7f00ff><b>🔥 ĐÁ ĐỘT PHÁ GIỚI HẠN 🔥</b></gradient>"
   lore:
-    - "<gray>Vật phẩm chứa đựng năng lượng thiên giới."
     - ""
-    - "<#ffff00>Yêu cầu: <gradient:#ff5f6d:#ffc371>Đạt Level 100</gradient>"
-    - "<#00ffcc>Tác dụng: <white>Chuột phải khi cầm trên tay"
-    - "<white>để phá vỡ giới hạn lên <#f5af19><b>Level 101</b></#f5af19>."
-  # Các lệnh Console sẽ thực thi ngay khi người chơi sử dụng vật phẩm thành công
+    - "<gray>Vật phẩm chứa đựng sức mạnh vô biên.</gray>"
+    - "<gray>Sử dụng khi đạt <yellow>Cấp 100</yellow> để phá vỡ</gray>"
+    - "<gray>xiềng xích và tiến vào cảnh giới mới!</gray>"
+    - ""
+    - "<red>⚠️ Click Chuột Phải để sử dụng.</red>"
+  custom-model-data: 0
+  # Các lệnh từ Console thực thi khi người chơi đột phá thành công
   commands-on-success:
-    - "give %player% diamond 1"
-    - "broadcast <gradient:#ff5f6d:#ffc371> Người chơi %player% vừa sử dụng Đá Thần Cấp đột phá thành công! 👑"
+    - "eco give %player% 50000"
+    - "broadcast <gradient:#f12711:#f5af19><b>⚡ Người chơi %player% đã Đột Phá Giới Hạn thành công! ⚡</b></gradient>"
 
-menu:
-  title: "<dark_gray>📊 BẢNG THÔNG TIN NGƯỜI CHƠI</dark_gray>"
-  size: 27
-  filler:
-    material: "GRAY_STAINED_GLASS_PANE"
-    name: " "
-    slots: [0,1,2,3,4,5,6,7,8,9,11,13,15,17,18,19,20,21,22,23,24,25,26]
-  stats:
-    level:
-      slot: 10
-      material: "EXPERIENCE_BOTTLE"
-      name: "<yellow><b>⭐ Cấp Độ & Kinh Nghiệm</b></yellow>"
-      lore:
-        - "<gray>Hiển thị tiến trình học đường của bạn"
-        - ""
-        - "<white>▪ Cấp độ hiện tại: <gradient:#ff5f6d:#ffc371><b>%level%</b></gradient>"
-        - "<white>▪ Kinh nghiệm: <aqua>%xp%</aqua>/<yellow>%next_xp%</yellow>"
-        - ""
-        - "<gray>Mỗi cấp độ tăng <green>+1%</green> Máu, Sát thương, Tốc độ!"
-    combat:
-      slot: 12
-      material: "NETHERITE_SWORD"
-      name: "<red><b>⚔️ Chỉ Số Chiến Đấu (Tổng)</b></red>"
-      lore:
-        - "<gray>Bao gồm chỉ số gốc + đồ đang mặc"
-        - ""
-        - "<white>▪ Sức tấn công: <red><b>%damage%🗡️</b></red>"
-        - "<white>▪ Máu tối đa: <green><b>%health%❤</b></green> (%health_hearts% tim)"
-        - "<white>▪ Giáp bảo vệ: <blue><b>%armor%🛡️</b></blue>"
-        - "<white>▪ Tốc độ chạy: <gold><b>%speed%⚡</b></gold>"
-    activity:
-      slot: 14
-      material: "DIAMOND_PICKAXE"
-      name: "<aqua><b>📈 Thống Kê Hoạt Động</b></aqua>"
-      lore:
-        - "<gray>Ghi nhận thành tựu trên máy chủ"
-        - ""
-        - "<white>▪ Tổng số block đã đào: <gold><b>%blocks_broken% 🧱</b></gold>"
-        - "<white>▪ Thời gian đã chơi: <green><b>%time_online% phút ⏱️</b></green>"
-    close_button:
-      slot: 16
-      material: "BARRIER"
-      name: "<red><b>❌ Đóng Giao Diện</b></red>"
-      lore:
-        - "<gray>Bấm để thoát khỏi menu"
-
+# ------------------------------------------
+# CẤU HÌNH KINH NGHIỆM ĐÀO BLOCK & DIỆT QUÁI
+# ------------------------------------------
 blocks:
   STONE: 5
   COAL_ORE: 10
@@ -118,3 +75,74 @@ mobs:
   WARDEN: 50000
   WITHER: 10000
   ENDER_DRAGON: 20000
+
+# ------------------------------------------
+# CẤU HÌNH ACTIONBAR CHẠY NGẦM
+# ------------------------------------------
+actionbar:
+  enabled: true
+  format: "<gold>Cấp: %level%</gold> <gray>[%progress_bar%]</gray> <yellow>%xp%/%next_xp% XP</yellow> | <red>❤ %health%/%max_health%</red> | <dark_red>⚔ %damage%</dark_red> | <green>🛡 %armor%</green>"
+
+# ------------------------------------------
+# GIAO DIỆN HỒ SƠ (PROFILE MENU)
+# ------------------------------------------
+menu:
+  title: "📊 BẢNG THÔNG TIN NGƯỜI CHƠI"
+  size: 27
+  filler:
+    material: "GRAY_STAINED_GLASS_PANE"
+    slots: [0,1,2,3,4,5,6,7,8,9,11,13,15,17,18,19,20,21,22,23,24,25,26]
+  
+  close_button:
+    slot: 22
+    material: "BARRIER"
+    name: "<red><b>ĐÓNG GIAO DIỆN</b></red>"
+
+  stats:
+    level:
+      slot: 10
+      material: "EXPERIENCE_BOTTLE"
+      name: "<yellow><b>✨ Thông Tin Tu Vi</b></yellow>"
+      lore:
+        - "<gray>Cấp Độ Hiện Tại: <gold>%level%</gold>"
+        - "<gray>Kinh Nghiệm: <green>%xp%/%next_xp% XP</green>"
+        - ""
+        - "<gray>Tổng block đã đào: <aqua>%blocks_broken%</aqua>"
+        - "<gray>Thời gian online: <aqua>%time_online% phút</aqua>"
+    combat:
+      slot: 12
+      material: "DIAMOND_SWORD"
+      name: "<red><b>⚔ Chỉ Số Chiến Đấu</b></red>"
+      lore:
+        - "<gray>Sát Thương: <dark_red>%damage% ⚔</dark_red>"
+        - "<gray>Sinh Mệnh: <red>%health% HP (%health_hearts% ❤)</red>"
+        - "<gray>Phòng Thủ: <green>%armor% 🛡</green>"
+        - "<gray>Tốc Độ: <light_purple>%speed% ⚡</light_purple>"
+    activity:
+      slot: 14
+      material: "BOOK"
+      name: "<aqua><b>📜 Thuộc Tính Hệ Thống</b></aqua>"
+      lore:
+        - "<gray>Gia tăng sức mạnh theo tỷ lệ phần trăm.</gray>"
+        - "<gray>Mỗi cấp tăng thêm:</gray>"
+        - "<red>  +1% Máu tối đa gốc</red>"
+        - "<dark_red>  +1% Sát thương cận chiến gốc</red>"
+        - "<light_purple>  +0.5% Tốc độ di chuyển gốc</light_purple>"
+
+# ------------------------------------------
+# TIN NHẮN THÔNG BÁO (SYSTEM MESSAGES)
+# ------------------------------------------
+messages:
+  prefix: "<gradient:#4facfe:#00f2fe><b>[SchoolLevel]</b></gradient> "
+  no-permission: "<red>Bạn không có quyền hạn để thực hiện lệnh này!</red>"
+  reload: "<green>Đã tải lại cấu hình hệ thống thành công!</green>"
+  status: "<gray>Cấp độ: <gold>%level%</gold> | XP: <green>%xp%/%next_xp%</green>"
+  level-up: "<newline><gradient:#f12711:#f5af19><b>★ CHÚC MỪNG ★</b></gradient> <gold>Bạn đã đột phá lên Cấp <green>%level%</green>!</gold><newline>"
+  level-up-title: "<gradient:#f12711:#f5af19><b>LEVEL UP!</b></gradient>"
+  level-up-subtitle: "<gold>Bạn đã đạt cấp độ <green>%level%</green></gold>"
+  breakthrough-needed: "<red>Bạn đã đạt cấp 100! Hãy sử dụng Đá Đột Phá để lên cấp tiếp theo!</red>"
+  not-max: "<red>Bạn chưa đạt cấp 100 để có thể sử dụng vật phẩm này!</red>"
+  already-break: "<red>Bạn đã đột phá giới hạn trước đó rồi!</red>"
+  breakthrough-success: "<green>Chúc mừng bạn đã phá vỡ xiềng xích thành công!</green>"
+  level-set-target: "<green>Cấp độ của bạn đã được đặt thành <yellow>%level%</yellow> bởi quản trị viên!</green>"
+  level-set-sender: "<green>Đã đặt cấp độ của người chơi <yellow>%player%</yellow> thành <white>%level%</white>.</green>"
