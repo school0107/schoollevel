@@ -5,7 +5,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.util.Ticks;
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -34,7 +33,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -61,22 +59,11 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     private NamespacedKey itemKey;
     private String menuTitleSerialized = "📊 BẢNG THÔNG TIN NGƯỜI CHƠI";
 
-    // Khai báo biến quản lý Kinh tế Vault
-    private static Economy econ = null;
-
     @Override
     public void onEnable() {
         saveDefaultConfig();
         loadConfigData();
         createDataFile();
-
-        // Thiết lập kết nối đến Vault Economy
-        if (!setupEconomy()) {
-            getLogger().severe(String.format("[%s] - Khởi chạy thất bại do không tìm thấy Vault hoặc plugin Kinh tế!", getDescription().getName()));
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-        getLogger().info("Đã kết nối thành công với hệ thống Kinh tế Vault! 💰");
 
         healthKey = new NamespacedKey(this, "schoollevel_health");
         damageKey = new NamespacedKey(this, "schoollevel_damage");
@@ -108,19 +95,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             removeAttributeModifiers(player);
         }
         saveAllData();
-    }
-
-    // Hàm kiểm tra và nạp plugin hỗ trợ Vault
-    private boolean setupEconomy() {
-        if (getServer().getPluginManager().getPlugin("Vault") == null) {
-            return false;
-        }
-        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
-        if (rsp == null) {
-            return false;
-        }
-        econ = rsp.getProvider();
-        return econ != null;
     }
 
     private void loadConfigData() {
@@ -238,8 +212,8 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         if (instance == null) return;
         instance.removeModifier(key);
         if (amount > 0) {
-            // Đã cập nhật Constructor mới thích ứng hoàn toàn API 1.21+ ngăn chặn triệt để lỗi biên dịch
-            AttributeModifier modifier = new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_SCALAR, org.bukkit.attribute.AttributeModifier.Slot.HAND);
+            // Sửa đổi phương thức khởi tạo chuẩn 1.21+ sử dụng EquipmentSlotGroup.ANY để tăng thuộc tính vĩnh viễn không lỗi build
+            AttributeModifier modifier = new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_SCALAR, org.bukkit.inventory.EquipmentSlotGroup.ANY);
             instance.addModifier(modifier);
         }
     }
@@ -378,8 +352,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         syncVanillaXpBar(event.getPlayer());
     }
 
-    // Đã chuyển EventPriority lên MONITOR để lắng nghe khối vỡ sau cùng, tương thích tốt với các plugin 3x3 và Auto-Mine
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
         if (p == null) return;
@@ -392,12 +365,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
 
         int xpToAdd = blockXpMap.getOrDefault(blockType, 0);
         if (xpToAdd > 0) addXp(p, xpToAdd);
-
-        // Tính toán và cộng tiền kinh tế theo Cấp độ người chơi (0.1$ mỗi level tăng thêm)
-        double moneyToReward = 0.1 + (data.level - 1) * 0.1;
-        if (moneyToReward > 0 && econ != null) {
-            econ.depositPlayer(p, moneyToReward);
-        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
