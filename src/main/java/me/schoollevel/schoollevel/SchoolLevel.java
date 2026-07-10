@@ -5,6 +5,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.util.Ticks;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -33,6 +34,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -59,16 +61,26 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     private NamespacedKey itemKey;
     private String menuTitleSerialized = "📊 BẢNG THÔNG TIN NGƯỜI CHƠI";
 
-    // Các biến lưu tỷ lệ đọc từ config
     private double healthPercentPerLevel = 0.01;
     private double damagePercentPerLevel = 0.01;
     private double speedPercentPerLevel = 0.005;
+
+    // Biến lưu trữ hệ thống Kinh tế Vault
+    private static Economy econ = null;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         loadConfigData();
         createDataFile();
+
+        // Kiểm tra và kết nối với Vault Economy
+        if (!setupEconomy() ) {
+            getLogger().severe(String.format("[%s] - Khởi thất bại do không tìm thấy plugin Vault hoặc plugin Kinh tế!", getDescription().getName()));
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        getLogger().info("Đã kết nối thành công với hệ thống Kinh tế Vault! 💰");
 
         healthKey = new NamespacedKey(this, "schoollevel_health");
         damageKey = new NamespacedKey(this, "schoollevel_damage");
@@ -77,7 +89,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         
         getServer().getPluginManager().registerEvents(this, this);
         
-        // Đăng ký lệnh cho cả /schoollevel và /profile
         if (getCommand("schoollevel") != null) getCommand("schoollevel").setExecutor(this);
         if (getCommand("profile") != null) getCommand("profile").setExecutor(this);
         
@@ -92,7 +103,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         }
 
         startActionBarTask();
-        getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur 1.21+! 🚀");
+        getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur! 🚀");
     }
 
     @Override
@@ -103,6 +114,19 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         saveAllData();
     }
 
+    // Hàm thiết lập kết nối Vault
+    private boolean setupEconomy() {
+        if (getServer().getPluginManager().getPlugin("Vault") == null) {
+            return false;
+        }
+        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
+        if (rsp == null) {
+            return false;
+        }
+        econ = rsp.getProvider();
+        return econ != null;
+    }
+
     private void loadConfigData() {
         reloadConfig();
         blockXpMap.clear();
@@ -111,7 +135,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         FileConfiguration config = getConfig();
         menuTitleSerialized = config.getString("menu.title", "📊 BẢNG THÔNG TIN NGƯỜI CHƠI");
         
-        // Đọc tỷ lệ cấu hình từ mục stats-per-level
         healthPercentPerLevel = config.getDouble("stats-per-level.health", 0.01);
         damagePercentPerLevel = config.getDouble("stats-per-level.damage", 0.01);
         speedPercentPerLevel = config.getDouble("stats-per-level.speed", 0.005);
@@ -209,7 +232,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         }
     }
 
-    // Cập nhật thuộc tính dựa theo tỷ lệ % trong config tương ứng từng chỉ số
     private void updatePlayerAttributes(Player player) {
         PlayerData data = getPlayerData(player.getUniqueId());
 
@@ -366,16 +388,29 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         syncVanillaXpBar(event.getPlayer());
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    // EVENT ĐÀO BLOCK CHÍNH (Đã sửa đổi mức MONITOR và thêm tính năng cộng Money)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
         if (p == null) return;
 
+        // Kiểm tra xem block vỡ có nằm trong danh sách được nhận diện cấu hình không
+        Material blockType = event.getBlock().getType();
+        if (!blockXpMap.containsKey(blockType)) return;
+
         PlayerData data = getPlayerData(p.getUniqueId());
         data.blocksBroken++;
 
-        int xpToAdd = blockXpMap.getOrDefault(event.getBlock().getType(), 0);
+        // 1. Xử lý cộng XP Tu Vi
+        int xpToAdd = blockXpMap.get(blockType);
         if (xpToAdd > 0) addXp(p, xpToAdd);
+
+        // 2. Xử lý tính toán và cộng Money thông qua Vault
+        // Công thức: Cấp 1 nhận 0.1$, Cấp 2 nhận 0.2$, ..., Cấp 100 nhận 10.0$
+        double moneyToReward = 0.1 + (data.level - 1) * 0.1;
+        if (moneyToReward > 0 && econ != null) {
+            econ.depositPlayer(p, moneyToReward);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -551,7 +586,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
             return true;
         }
 
-        // Xử lý mở Menu khi gõ lệnh /profile hoặc /schoollevel menu
         if (command.getName().equalsIgnoreCase("profile") || (args.length > 0 && args[0].equalsIgnoreCase("menu"))) {
             openProfileMenu(player);
             return true;
