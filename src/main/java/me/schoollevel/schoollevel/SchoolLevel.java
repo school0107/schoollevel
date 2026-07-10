@@ -61,11 +61,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
     private NamespacedKey itemKey;
     private String menuTitleSerialized = "📊 BẢNG THÔNG TIN NGƯỜI CHƠI";
 
-    private double healthPercentPerLevel = 0.01;
-    private double damagePercentPerLevel = 0.01;
-    private double speedPercentPerLevel = 0.005;
-
-    // Biến lưu trữ hệ thống Kinh tế Vault
+    // Khai báo biến quản lý Kinh tế Vault
     private static Economy econ = null;
 
     @Override
@@ -74,9 +70,9 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         loadConfigData();
         createDataFile();
 
-        // Kiểm tra và kết nối với Vault Economy
-        if (!setupEconomy() ) {
-            getLogger().severe(String.format("[%s] - Khởi thất bại do không tìm thấy plugin Vault hoặc plugin Kinh tế!", getDescription().getName()));
+        // Thiết lập kết nối đến Vault Economy
+        if (!setupEconomy()) {
+            getLogger().severe(String.format("[%s] - Khởi chạy thất bại do không tìm thấy Vault hoặc plugin Kinh tế!", getDescription().getName()));
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -103,7 +99,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         }
 
         startActionBarTask();
-        getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur! 🚀");
+        getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur 1.21+! 🚀");
     }
 
     @Override
@@ -114,7 +110,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         saveAllData();
     }
 
-    // Hàm thiết lập kết nối Vault
+    // Hàm kiểm tra và nạp plugin hỗ trợ Vault
     private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) {
             return false;
@@ -135,10 +131,6 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         FileConfiguration config = getConfig();
         menuTitleSerialized = config.getString("menu.title", "📊 BẢNG THÔNG TIN NGƯỜI CHƠI");
         
-        healthPercentPerLevel = config.getDouble("stats-per-level.health", 0.01);
-        damagePercentPerLevel = config.getDouble("stats-per-level.damage", 0.01);
-        speedPercentPerLevel = config.getDouble("stats-per-level.speed", 0.005);
-
         if (config.getConfigurationSection("blocks") != null) {
             for (String key : config.getConfigurationSection("blocks").getKeys(false)) {
                 try {
@@ -192,7 +184,7 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
 
     public int getRequiredXp(int level) {
         int base = getConfig().getInt("settings.base-xp", 100);
-        double mult = getConfig().getDouble("settings.xp-multiplier", 1.1);
+        double mult = getConfig().getDouble("settings.xp-multiplier", 1.5);
         return (int) (base * Math.pow(mult, level - 1));
     }
 
@@ -234,14 +226,11 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
 
     private void updatePlayerAttributes(Player player) {
         PlayerData data = getPlayerData(player.getUniqueId());
+        double percentBonus = data.level * 0.01;
 
-        double healthBonus = data.level * healthPercentPerLevel;
-        double damageBonus = data.level * damagePercentPerLevel;
-        double speedBonus = data.level * speedPercentPerLevel;
-
-        applyModifier(player, Attribute.GENERIC_MAX_HEALTH, healthKey, healthBonus);
-        applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, damageKey, damageBonus);
-        applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, speedKey, speedBonus);
+        applyModifier(player, Attribute.GENERIC_MAX_HEALTH, healthKey, percentBonus);
+        applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, damageKey, percentBonus);
+        applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, speedKey, percentBonus);
     }
 
     private void applyModifier(Player player, Attribute attribute, NamespacedKey key, double amount) {
@@ -249,7 +238,8 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         if (instance == null) return;
         instance.removeModifier(key);
         if (amount > 0) {
-            AttributeModifier modifier = new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_SCALAR);
+            // Đã cập nhật Constructor mới thích ứng hoàn toàn API 1.21+ ngăn chặn triệt để lỗi biên dịch
+            AttributeModifier modifier = new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_SCALAR, org.bukkit.attribute.AttributeModifier.Slot.HAND);
             instance.addModifier(modifier);
         }
     }
@@ -388,25 +378,22 @@ public final class SchoolLevel extends JavaPlugin implements Listener, CommandEx
         syncVanillaXpBar(event.getPlayer());
     }
 
-    // EVENT ĐÀO BLOCK CHÍNH (Đã sửa đổi mức MONITOR và thêm tính năng cộng Money)
+    // Đã chuyển EventPriority lên MONITOR để lắng nghe khối vỡ sau cùng, tương thích tốt với các plugin 3x3 và Auto-Mine
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
         if (p == null) return;
 
-        // Kiểm tra xem block vỡ có nằm trong danh sách được nhận diện cấu hình không
         Material blockType = event.getBlock().getType();
         if (!blockXpMap.containsKey(blockType)) return;
 
         PlayerData data = getPlayerData(p.getUniqueId());
         data.blocksBroken++;
 
-        // 1. Xử lý cộng XP Tu Vi
-        int xpToAdd = blockXpMap.get(blockType);
+        int xpToAdd = blockXpMap.getOrDefault(blockType, 0);
         if (xpToAdd > 0) addXp(p, xpToAdd);
 
-        // 2. Xử lý tính toán và cộng Money thông qua Vault
-        // Công thức: Cấp 1 nhận 0.1$, Cấp 2 nhận 0.2$, ..., Cấp 100 nhận 10.0$
+        // Tính toán và cộng tiền kinh tế theo Cấp độ người chơi (0.1$ mỗi level tăng thêm)
         double moneyToReward = 0.1 + (data.level - 1) * 0.1;
         if (moneyToReward > 0 && econ != null) {
             econ.depositPlayer(p, moneyToReward);
