@@ -3,22 +3,17 @@
 # ==========================================
 
 settings:
-  # Lượng XP cơ bản cần để lên cấp 2
   base-xp: 100
-  # Hệ số nhân XP tăng thêm theo từng cấp (Công thức: base * multiplier^(level-1))
   xp-multiplier: 1.1
-  # Định dạng hiển thị PlaceholderAPI %schoollevel_level_formatted%
   papi-level-formatted: "⭐%level%"
 
 # ------------------------------------------
 # TÙY CHỈNH CHỈ SỐ TĂNG TIỂN THEO % MỖI CẤP
 # ------------------------------------------
-# Giá trị nhập vào là hệ số thập phân (Ví dụ: 0.01 = 1%, 0.005 = 0.5%)
-# Tổng % cộng thêm = Số cấp * Hệ số cấu hình
 stats-per-level:
-  health: 0.01       # 0.01 tức là tăng 1% Máu gốc mỗi cấp (Cấp 50 tăng 50% Máu)
-  damage: 0.01       # 0.01 tức là tăng 1% Sát thương cận chiến gốc mỗi cấp
-  speed: 0.005       # 0.005 tức là tăng 0.5% Tốc độ di chuyển gốc mỗi cấp
+  health: 0.01       # Tăng 1% Máu gốc mỗi cấp
+  damage: 0.01       # Tăng 1% Sát thương gốc mỗi cấp
+  speed: 0.005       # Tăng 0.5% Tốc độ gốc mỗi cấp
 
 # ------------------------------------------
 # VẬT PHẨM ĐỘT PHÁ (Từ Cấp 100 lên 101)
@@ -34,13 +29,12 @@ breakthrough-item:
     - ""
     - "<red>⚠️ Click Chuột Phải để sử dụng.</red>"
   custom-model-data: 0
-  # Các lệnh từ Console thực thi khi người chơi đột phá thành công
   commands-on-success:
     - "eco give %player% 50000"
     - "broadcast <gradient:#f12711:#f5af19><b>⚡ Người chơi %player% đã Đột Phá Giới Hạn thành công! ⚡</b></gradient>"
 
 # ------------------------------------------
-# CẤU HÌNH KINH NGHIỆM ĐÀO BLOCK & DIỆT QUÁI
+# KINH NGHIỆM ĐÀO BLOCK (0.1 Money/Cấp khi đào)
 # ------------------------------------------
 blocks:
   STONE: 5
@@ -76,9 +70,6 @@ mobs:
   WITHER: 10000
   ENDER_DRAGON: 20000
 
-# ------------------------------------------
-# CẤU HÌNH ACTIONBAR CHẠY NGẦM
-# ------------------------------------------
 actionbar:
   enabled: true
   format: "<gold>Cấp: %level%</gold> <gray>[%progress_bar%]</gray> <yellow>%xp%/%next_xp% XP</yellow> | <red>❤ %health%/%max_health%</red> | <dark_red>⚔ %damage%</dark_red> | <green>🛡 %armor%</green>"
@@ -129,9 +120,6 @@ menu:
         - "<dark_red>  +1% Sát thương cận chiến gốc</red>"
         - "<light_purple>  +0.5% Tốc độ di chuyển gốc</light_purple>"
 
-# ------------------------------------------
-# TIN NHẮN THÔNG BÁO (SYSTEM MESSAGES)
-# ------------------------------------------
 messages:
   prefix: "<gradient:#4facfe:#00f2fe><b>[SchoolLevel]</b></gradient> "
   no-permission: "<red>Bạn không có quyền hạn để thực hiện lệnh này!</red>"
