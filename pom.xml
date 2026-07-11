@@ -20,17 +20,22 @@
     </properties>
 
     <repositories>
+        <!-- PaperMC Repository -->
         <repository>
             <id>papermc</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
+        
+        <!-- PlaceholderAPI Repository -->
         <repository>
             <id>placeholderapi</id>
             <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
         </repository>
+        
+        <!-- Vault Repository (ĐÚNG) -->
         <repository>
-            <id>vault</id>
-            <url>https://repo.codemc.io/repository/maven-public/</url>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
     </repositories>
 
@@ -51,7 +56,7 @@
             <scope>provided</scope>
         </dependency>
         
-        <!-- Vault API -->
+        <!-- VaultAPI từ JitPack -->
         <dependency>
             <groupId>com.github.MilkBowl</groupId>
             <artifactId>VaultAPI</artifactId>
