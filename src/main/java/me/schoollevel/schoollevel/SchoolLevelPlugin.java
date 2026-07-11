@@ -1,7 +1,6 @@
 package me.schoollevel.schoollevel;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -73,12 +72,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         long startTime = System.currentTimeMillis();
         instance = this;
         
-        // Setup Vault Economy
         if (!setupEconomy()) {
             getLogger().warning("Vault Economy not found! Money features will be disabled.");
         }
         
-        // Load config
         saveDefaultConfig();
         configManager = new ConfigManager();
         
@@ -136,7 +133,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     }
 
     private void startScheduledTasks() {
-        // Action bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -146,7 +142,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
         }.runTaskTimer(this, 0, ACTION_BAR_INTERVAL);
         
-        // XP bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -305,17 +300,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 .replace("{name}", currencyName)
                 .replace("{amount}", DF_MONEY.format(amount));
             return formatted;
-        }
-        
-        public String getBlockMoneyDisplay(Player player, Material material) {
-            DataManager.PlayerData data = dataManager.getPlayerData(player);
-            int level = data.getLevel();
-            double baseMoney = getBlockMoney(material);
-            if (baseMoney < 0) {
-                baseMoney = getBaseBlockMoney();
-            }
-            double bonus = level * getLevelMoneyBonus();
-            return formatMoney(baseMoney + bonus);
         }
         
         public double getCalculatedBlockMoney(Player player, Material material) {
@@ -488,7 +472,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             attributeManager.updateAttributes(player);
             
-            // Show Title with gradient color
             String title = getConfig().getString("messages.level-up-title", "&6&l⬆ LEVEL UP!");
             String subtitle = getConfig().getString("messages.level-up-subtitle", "&fBạn đã đạt &6Cấp %level%");
             title = color(title);
@@ -504,13 +487,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 )
             ));
             
-            // Send chat message with hex color
             String message = getConfig().getString("messages.level-up-chat", 
                 "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦")
                 .replace("%level%", String.valueOf(newLevel));
             player.sendMessage(color(message));
             
-            // Execute commands
             for (String cmd : getConfig().getStringList("commands.level-up")) {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
                     cmd.replace("%player%", player.getName()).replace("%level%", String.valueOf(newLevel)));
@@ -559,7 +540,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 data.incrementBlocksBroken();
             }
             
-            // Handle money with level bonus
             double moneyEarned = configManager.getCalculatedBlockMoney(player, material);
             if (moneyEarned > 0) {
                 addMoney(player, moneyEarned);
@@ -572,7 +552,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 levelManager.addXP(player, xp);
             }
             
-            // Handle money
             double moneyEarned = configManager.getMobMoney(entityType);
             if (moneyEarned > 0) {
                 addMoney(player, moneyEarned);
@@ -588,7 +567,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 data.addMoney(amount);
             }
             
-            // Store pending money for action bar display
             if (configManager.showMoneyMessage()) {
                 data.addPendingMoney(amount);
                 data.setMoneyMessageTicks(configManager.getMoneyMessageDuration());
@@ -639,7 +617,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
             
-            // Bonus money for breakthrough
             double bonusMoney = getConfig().getDouble("breakthrough.bonus-money", 10000);
             if (configManager.useVaultEconomy()) {
                 economy.depositPlayer(player, bonusMoney);
@@ -693,7 +670,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
             double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
             
-            // Get money
             double money;
             if (configManager.useVaultEconomy()) {
                 money = economy.getBalance(player);
@@ -701,11 +677,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 money = data.getMoney();
             }
             
-            // Build action bar with pending money message
             String actionBarText = buildActionBarText(player, level, bar, xp, required, health, damage, money);
             player.sendActionBar(Component.text(color(actionBarText)));
             
-            // Update pending money timer
             if (data.getMoneyMessageTicks() > 0) {
                 data.setMoneyMessageTicks(data.getMoneyMessageTicks() - 1);
                 if (data.getMoneyMessageTicks() == 0) {
@@ -721,7 +695,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             String moneyDisplay = configManager.formatMoney(money);
             
-            // Check if there's pending money to show
             String pendingDisplay = "";
             if (data.getMoneyMessageTicks() > 0 && data.getPendingMoney() > 0) {
                 pendingDisplay = " &a+ " + configManager.formatMoney(data.getPendingMoney());
@@ -903,3 +876,32 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
             if (args.length < 1) {
                 sender.sendMessage(color("&cUsage: /schoollevelgiveitem <player>"));
+                return true;
+            }
+            
+            if (!sender.hasPermission("schoollevel.admin")) {
+                sender.sendMessage(color("&cYou don't have permission!"));
+                return true;
+            }
+            
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null) {
+                sender.sendMessage(color("&cPlayer not found!"));
+                return true;
+            }
+            
+            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
+            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
+            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
+            return true;
+        }
+    }
+
+    // ==================== GUI ====================
+    public class ProfileGUI {
+        private final Player player;
+        private final Inventory inventory;
+
+        public ProfileGUI(Player player) {
+            this.player = player;
+            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh
