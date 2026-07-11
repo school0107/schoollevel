@@ -904,7 +904,4 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public ProfileGUI(Player player) {
             this.player = player;
-            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh ✦"));
-        }
-
-        public void
+            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học S
