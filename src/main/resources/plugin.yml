@@ -1,12 +1,26 @@
+# plugin.yml
 name: SchoolLevel
-version: 1.0.0
-main: me.schoollevel.schoollevel.SchoolLevel
-api-version: '1.21'
-author: AI_Developer
-description: Hệ thống cấp độ học đường tương thích đào diện rộng 3x3, có ActionBar và Vật phẩm Đột Phá!
-softdepend: [PlaceholderAPI]
+version: 1.0
+main: com.schoollevel.SchoolLevelPlugin
+api-version: "1.21"
+author: SchoolLevel
+description: RPG Level System with Breakthrough
+
 commands:
+  profile:
+    description: Mở menu thông tin cá nhân
+    usage: /profile
+    aliases: [schoollevelmenu]
   schoollevel:
-    description: Lệnh quản trị SchoolLevel
-    aliases: [sl, slevel, profile]
-    permission: schoollevel.use
+    description: Quản lý SchoolLevel
+    usage: /schoollevel <reload>
+    permission: schoollevel.admin
+  schoollevelgiveitem:
+    description: Cấp Đá Đột Phá
+    usage: /schoollevelgiveitem <player>
+    permission: schoollevel.admin
+
+permissions:
+  schoollevel.admin:
+    description: Admin permissions
+    default: op
