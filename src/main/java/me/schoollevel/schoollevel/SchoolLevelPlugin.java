@@ -913,4 +913,4 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             ItemMeta glassMeta = glass.getItemMeta();
             glassMeta.setDisplayName(" ");
             glass.setItemMeta(glassMeta);
-            for (int i = 0; i < 54; i++) inventory.set
+            for (int i = 0; i < 54;
