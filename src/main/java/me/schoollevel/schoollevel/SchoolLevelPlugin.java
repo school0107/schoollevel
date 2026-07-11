@@ -1,6 +1,7 @@
 package me.schoollevel.schoollevel;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -185,13 +186,15 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private final Map<Material, Double> blockMoney = new ConcurrentHashMap<>();
         private final Map<EntityType, Double> mobMoney = new ConcurrentHashMap<>();
         
-        private String currencySymbol = "$";
-        private String currencyName = "coins";
+        private String currencySymbol = "💰 ";
+        private String currencyName = "Xu";
         private boolean showMoneyMessage = true;
         private boolean useVaultEconomy = true;
         private String moneyFormat = "{symbol}{amount}";
         private String actionBarFormat = "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}{pending}";
         private int moneyMessageDuration = 60;
+        private double baseBlockMoney = 0.1;
+        private double levelMoneyBonus = 0.05;
         
         public ConfigManager() {
             reload();
@@ -258,14 +261,16 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         private void loadSettings() {
             FileConfiguration config = getConfig();
-            currencySymbol = config.getString("settings.currency.symbol", "$");
-            currencyName = config.getString("settings.currency.name", "coins");
+            currencySymbol = config.getString("settings.currency.symbol", "💰 ");
+            currencyName = config.getString("settings.currency.name", "Xu");
             moneyFormat = config.getString("settings.currency.format", "{symbol}{amount}");
             showMoneyMessage = config.getBoolean("settings.show-money-message", true);
             useVaultEconomy = config.getBoolean("settings.use-vault-economy", true);
             actionBarFormat = config.getString("settings.actionbar-format", 
                 "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}{pending}");
             moneyMessageDuration = config.getInt("settings.money-message-duration", 60);
+            baseBlockMoney = config.getDouble("settings.base-block-money", 0.1);
+            levelMoneyBonus = config.getDouble("settings.level-money-bonus", 0.05);
         }
 
         public double getBlockXP(Material material) {
@@ -277,11 +282,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         public double getBlockMoney(Material material) {
-            return blockMoney.getOrDefault(material, 0.0);
+            return blockMoney.getOrDefault(material, -1.0);
         }
 
         public double getMobMoney(EntityType type) {
-            return mobMoney.getOrDefault(type, 0.0);
+            return mobMoney.getOrDefault(type, -1.0);
         }
 
         public String getCurrencySymbol() { return currencySymbol; }
@@ -291,13 +296,37 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         public boolean useVaultEconomy() { return useVaultEconomy && hasEconomy(); }
         public String getActionBarFormat() { return actionBarFormat; }
         public int getMoneyMessageDuration() { return moneyMessageDuration; }
+        public double getBaseBlockMoney() { return baseBlockMoney; }
+        public double getLevelMoneyBonus() { return levelMoneyBonus; }
 
         public String formatMoney(double amount) {
             String formatted = moneyFormat
                 .replace("{symbol}", currencySymbol)
                 .replace("{name}", currencyName)
                 .replace("{amount}", DF_MONEY.format(amount));
-            return color(formatted);
+            return formatted;
+        }
+        
+        public String getBlockMoneyDisplay(Player player, Material material) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int level = data.getLevel();
+            double baseMoney = getBlockMoney(material);
+            if (baseMoney < 0) {
+                baseMoney = getBaseBlockMoney();
+            }
+            double bonus = level * getLevelMoneyBonus();
+            return formatMoney(baseMoney + bonus);
+        }
+        
+        public double getCalculatedBlockMoney(Player player, Material material) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int level = data.getLevel();
+            double baseMoney = getBlockMoney(material);
+            if (baseMoney < 0) {
+                baseMoney = getBaseBlockMoney();
+            }
+            double bonus = level * getLevelMoneyBonus();
+            return baseMoney + bonus;
         }
     }
 
@@ -459,7 +488,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             attributeManager.updateAttributes(player);
             
-            // Show Title
+            // Show Title with gradient color
             String title = getConfig().getString("messages.level-up-title", "&6&l⬆ LEVEL UP!");
             String subtitle = getConfig().getString("messages.level-up-subtitle", "&fBạn đã đạt &6Cấp %level%");
             title = color(title);
@@ -475,7 +504,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 )
             ));
             
-            // Send chat message
+            // Send chat message with hex color
             String message = getConfig().getString("messages.level-up-chat", 
                 "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦")
                 .replace("%level%", String.valueOf(newLevel));
@@ -530,8 +559,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 data.incrementBlocksBroken();
             }
             
-            // Handle money
-            double moneyEarned = configManager.getBlockMoney(material);
+            // Handle money with level bonus
+            double moneyEarned = configManager.getCalculatedBlockMoney(player, material);
             if (moneyEarned > 0) {
                 addMoney(player, moneyEarned);
             }
@@ -874,43 +903,3 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
             if (args.length < 1) {
                 sender.sendMessage(color("&cUsage: /schoollevelgiveitem <player>"));
-                return true;
-            }
-            
-            if (!sender.hasPermission("schoollevel.admin")) {
-                sender.sendMessage(color("&cYou don't have permission!"));
-                return true;
-            }
-            
-            Player target = Bukkit.getPlayer(args[0]);
-            if (target == null) {
-                sender.sendMessage(color("&cPlayer not found!"));
-                return true;
-            }
-            
-            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
-            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
-            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
-            return true;
-        }
-    }
-
-    // ==================== GUI ====================
-    public class ProfileGUI {
-        private final Player player;
-        private final Inventory inventory;
-
-        public ProfileGUI(Player player) {
-            this.player = player;
-            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh ✦"));
-        }
-
-        public void open() {
-            DataManager.PlayerData data = dataManager.getPlayerData(player);
-            
-            // Fill background
-            ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-            ItemMeta glassMeta = glass.getItemMeta();
-            glassMeta.setDisplayName(" ");
-            glass.setItemMeta(glassMeta);
-            for (int i = 0; i < 54; i++)

@@ -3,25 +3,25 @@ version: ${project.version}
 main: me.schoollevel.schoollevel.SchoolLevelPlugin
 api-version: "1.21"
 author: SchoolLevel
-description: RPG Level System with Breakthrough, Money and Vault Integration
+description: ✨ RPG Level System with Breakthrough, Money and Vault Integration
 depend: [Vault]
 softdepend: [PlaceholderAPI]
 
 commands:
   profile:
-    description: Mở menu thông tin cá nhân
+    description: 📊 Mở menu thông tin cá nhân
     usage: /profile
     aliases: [schoollevelmenu]
   schoollevel:
-    description: Quản lý SchoolLevel
+    description: ⚙️ Quản lý SchoolLevel
     usage: /schoollevel <reload|giveitem|givecoins>
     permission: schoollevel.admin
   schoollevelgiveitem:
-    description: Cấp Đá Đột Phá
+    description: 💎 Cấp Đá Đột Phá
     usage: /schoollevelgiveitem <player>
     permission: schoollevel.admin
 
 permissions:
   schoollevel.admin:
-    description: Admin permissions
+    description: 👑 Admin permissions
     default: op

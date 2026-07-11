@@ -1,29 +1,40 @@
 # ======================================================
-#              SCHOOLLEVEL PLUGIN CONFIG
-#                 RPG Level System v1.0
+#        ✨ SCHOOLLEVEL PLUGIN CONFIG ✨
+#          RPG Level System v1.0 - 1.21+
 # ======================================================
 
 # ==================== SETTINGS ====================
 settings:
-  # Currency settings
+  # ===== TIỀN TỆ =====
   currency:
-    # Ký hiệu tiền tệ
+    # Ký hiệu tiền tệ (có thể dùng emoji)
     symbol: "💰 "
     # Tên tiền tệ
-    name: "coins"
+    name: "Xu"
     # Định dạng hiển thị: {symbol}{amount} hoặc {amount} {name}
     format: "{symbol}{amount}"
   
+  # ===== KINH TẾ =====
   # Sử dụng Vault Economy (nếu có)
   # Nếu bật, plugin sẽ dùng economy của server (Essentials, CMI, etc.)
   # Nếu tắt, plugin sẽ dùng hệ thống tiền nội bộ
   use-vault-economy: true
   
+  # ===== THÔNG BÁO =====
   # Hiển thị thông báo nhận tiền trên actionbar
   show-money-message: true
   
   # Thời gian hiển thị thông báo nhận tiền (tick, 20 tick = 1 giây)
   money-message-duration: 60
+  
+  # ===== TIỀN ĐÀO BLOCK =====
+  # Tiền cơ bản khi đào 1 block (tất cả các loại block)
+  base-block-money: 0.1
+  
+  # Tiền thưởng thêm mỗi cấp khi đào block
+  # Ví dụ: level 10 => bonus = 10 * 0.05 = 0.5
+  # Tổng tiền nhận được = base-block-money + (level * level-money-bonus)
+  level-money-bonus: 0.05
   
   # ===== ACTIONBAR FORMAT =====
   # Các placeholder có thể sử dụng:
@@ -41,7 +52,7 @@ settings:
 xp:
   # XP nhận được khi đào block
   blocks:
-    # Quặng quý hiếm
+    # 🟡 Quặng quý hiếm
     diamond_ore: 15.0
     deepslate_diamond_ore: 20.0
     emerald_ore: 20.0
@@ -50,7 +61,7 @@ xp:
     ancient_debris: 25.0
     obsidian: 12.0
     
-    # Quặng thường
+    # 🟠 Quặng thường
     coal_ore: 5.0
     deepslate_coal_ore: 7.0
     iron_ore: 8.0
@@ -62,11 +73,11 @@ xp:
     lapis_ore: 8.0
     deepslate_lapis_ore: 10.0
     
-    # Nether
+    # 🔥 Nether
     nether_quartz_ore: 6.0
     nether_gold_ore: 8.0
     
-    # Đá cơ bản
+    # 🪨 Đá cơ bản
     stone: 1.0
     deepslate: 1.5
     cobblestone: 0.5
@@ -79,7 +90,7 @@ xp:
     blackstone: 1.5
     end_stone: 3.0
     
-    # Gỗ
+    # 🌳 Gỗ
     oak_log: 2.0
     spruce_log: 2.0
     birch_log: 2.0
@@ -91,13 +102,13 @@ xp:
 
   # XP nhận được khi giết mob
   mobs:
-    # Boss
+    # 👑 Boss
     warden: 100.0
     elder_guardian: 50.0
     ravager: 40.0
     evoker: 35.0
     
-    # Nether
+    # 🔥 Nether
     ghast: 30.0
     piglin_brute: 25.0
     wither_skeleton: 25.0
@@ -107,7 +118,7 @@ xp:
     piglin: 12.0
     magma_cube: 8.0
     
-    # Overworld
+    # 🌍 Overworld
     enderman: 20.0
     vindicator: 20.0
     guardian: 20.0
@@ -127,15 +138,17 @@ xp:
     stray: 14.0
     phantom: 16.0
     
-    # Mới 1.21
+    # 🆕 Mới 1.21
     breeze: 30.0
     bogged: 14.0
 
 # ==================== MONEY CONFIGURATION ====================
 money:
-  # Tiền nhận được khi đào block
+  # 💰 TIỀN NHẬN ĐƯỢC KHI ĐÀO BLOCK
+  # Nếu không có trong danh sách này, sẽ dùng base-block-money
+  # Có thể ghi đè cho từng loại block riêng
   blocks:
-    # Quặng quý hiếm
+    # 🟡 Quặng quý hiếm
     diamond_ore: 5.0
     deepslate_diamond_ore: 7.0
     emerald_ore: 8.0
@@ -144,7 +157,7 @@ money:
     ancient_debris: 12.0
     obsidian: 3.0
     
-    # Quặng thường
+    # 🟠 Quặng thường
     coal_ore: 1.0
     deepslate_coal_ore: 1.5
     iron_ore: 2.0
@@ -156,23 +169,23 @@ money:
     lapis_ore: 1.5
     deepslate_lapis_ore: 2.0
     
-    # Nether
+    # 🔥 Nether
     nether_quartz_ore: 1.5
     nether_gold_ore: 2.0
     
-    # Đá cơ bản
-    stone: 0.2
-    deepslate: 0.3
-    cobblestone: 0.1
-    grass_block: 0.1
-    dirt: 0.05
-    sand: 0.05
-    gravel: 0.1
-    netherrack: 0.1
-    basalt: 0.2
-    blackstone: 0.3
+    # 🪨 Đá cơ bản (nếu không có sẽ dùng base-block-money: 0.1)
+    # stone: 0.2
+    # deepslate: 0.3
+    # cobblestone: 0.1
+    # grass_block: 0.1
+    # dirt: 0.05
+    # sand: 0.05
+    # gravel: 0.1
+    # netherrack: 0.1
+    # basalt: 0.2
+    # blackstone: 0.3
     
-    # Gỗ
+    # 🌳 Gỗ
     oak_log: 0.5
     spruce_log: 0.5
     birch_log: 0.5
@@ -182,15 +195,15 @@ money:
     mangrove_log: 0.5
     cherry_log: 0.5
 
-  # Tiền nhận được khi giết mob
+  # 💰 TIỀN NHẬN ĐƯỢC KHI GIẾT MOB
   mobs:
-    # Boss
+    # 👑 Boss
     warden: 50.0
     elder_guardian: 25.0
     ravager: 20.0
     evoker: 15.0
     
-    # Nether
+    # 🔥 Nether
     ghast: 12.0
     piglin_brute: 10.0
     wither_skeleton: 10.0
@@ -200,7 +213,7 @@ money:
     piglin: 4.0
     magma_cube: 3.0
     
-    # Overworld
+    # 🌍 Overworld
     enderman: 8.0
     vindicator: 7.0
     guardian: 7.0
@@ -220,28 +233,29 @@ money:
     stray: 4.0
     phantom: 5.0
     
-    # Mới 1.21
+    # 🆕 Mới 1.21
     breeze: 12.0
     bogged: 4.0
 
 # ==================== BREAKTHROUGH ====================
 breakthrough:
-  # Số tiền thưởng khi đột phá
+  # 💰 Số tiền thưởng khi đột phá
   bonus-money: 10000.0
 
 # ==================== MESSAGES ====================
 messages:
-  # Tin nhắn khi lên cấp (CHAT)
-  level-up-chat: "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦"
+  # 📨 Tin nhắn khi lên cấp (CHAT)
+  # Có thể dùng màu HEX: &#FF6B00
+  level-up-chat: "&6&l⬆ &fBạn đã lên &6&lCấp %level%&f! &e✦"
   
-  # Tin nhắn khi lên cấp (TITLE)
+  # 🎯 Tin nhắn khi lên cấp (TITLE)
   level-up-title: "&6&l⬆ LEVEL UP!"
-  level-up-subtitle: "&fBạn đã đạt &6Cấp %level%"
+  level-up-subtitle: "&fBạn đã đạt &6&lCấp %level%"
   
-  # Tin nhắn đột phá (BROADCAST)
+  # 📢 Tin nhắn đột phá (BROADCAST)
   breakthrough: "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! ✦"
   
-  # Lỗi
+  # ❌ Lỗi
   no-permission: "&c❌ Bạn không có quyền sử dụng lệnh này!"
   player-not-found: "&c❌ Không tìm thấy người chơi!"
   breakthrough-already: "&c❌ Bạn đã đột phá rồi!"
@@ -250,14 +264,15 @@ messages:
 
 # ==================== COMMANDS ====================
 commands:
-  # Lệnh chạy khi lên cấp
+  # 📋 Lệnh chạy khi lên cấp
   level-up:
-    - "say &6&l✦ &f%player% &eđã lên cấp &6%level%&e! Chúc mừng!"
+    - "say &6&l✦ &f%player% &eđã lên cấp &6&l%level%&e! 🎉 Chúc mừng!"
     - "effect give %player% minecraft:glowing 3 1"
+    - "effect give %player% minecraft:regeneration 5 1"
     
-  # Lệnh chạy khi đột phá
+  # 📋 Lệnh chạy khi đột phá
   breakthrough:
-    - "say &6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ GIỚI HẠN! &fCấp 101 HUYỀN THOẠI!"
+    - "say &6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ GIỚI HẠN! &fCấp 101 HUYỀN THOẠI! ✨"
     - "title %player% title &6&l✦ HUYỀN THOẠI ✦"
     - "title %player% subtitle &eCấp 101 - Sức mạnh vô hạn"
     - "effect give %player% minecraft:strength 60 2"
