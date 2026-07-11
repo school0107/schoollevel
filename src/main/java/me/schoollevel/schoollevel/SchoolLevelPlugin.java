@@ -1,7 +1,5 @@
 package me.schoollevel.schoollevel;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -45,12 +43,12 @@ import java.util.logging.Level;
 
 public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
-    private static final int MAX_LEVEL = 100;
-    private static final int LEGENDARY_LEVEL = 101;
-    private static final int XP_BAR_UPDATE_INTERVAL = 20;
-    private static final int ACTION_BAR_INTERVAL = 20;
-    private static final DecimalFormat DF = new DecimalFormat("#.##");
-    private static final DecimalFormat DF_MONEY = new DecimalFormat("#,###.##");
+    public static final int MAX_LEVEL = 100;
+    public static final int LEGENDARY_LEVEL = 101;
+    public static final int XP_BAR_UPDATE_INTERVAL = 20;
+    public static final int ACTION_BAR_INTERVAL = 20;
+    public static final DecimalFormat DF = new DecimalFormat("#.##");
+    public static final DecimalFormat DF_MONEY = new DecimalFormat("#,###.##");
 
     private static SchoolLevelPlugin instance;
     private net.milkbowl.vault.economy.Economy economy;
@@ -169,7 +167,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public net.milkbowl.vault.economy.Economy getEconomy() { return economy; }
     public boolean hasEconomy() { return economy != null; }
 
-    private String color(String message) {
+    public String color(String message) {
         return ChatColor.translateAlternateColorCodes('&', message);
     }
 
@@ -433,10 +431,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             title = color(title);
             subtitle = color(subtitle.replace("%level%", String.valueOf(newLevel)));
 
-            player.showTitle(Title.title(
-                Component.text(title),
-                Component.text(subtitle),
-                Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(2000), Duration.ofMillis(500))
+            player.showTitle(net.kyori.adventure.title.Title.title(
+                net.kyori.adventure.text.Component.text(title),
+                net.kyori.adventure.text.Component.text(subtitle),
+                net.kyori.adventure.title.Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(2000), Duration.ofMillis(500))
             ));
 
             String message = getConfig().getString("messages.level-up-chat",
@@ -602,7 +600,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double money = configManager.useVaultEconomy() ? economy.getBalance(player) : data.getMoney();
 
             String actionBarText = buildActionBarText(player, level, bar, xp, required, health, damage, money);
-            player.sendActionBar(Component.text(color(actionBarText)));
+            player.sendActionBar(net.kyori.adventure.text.Component.text(color(actionBarText)));
 
             if (data.getMoneyMessageTicks() > 0) {
                 data.setMoneyMessageTicks(data.getMoneyMessageTicks() - 1);
@@ -633,7 +631,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== EVENTS ====================
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockBreak(BlockBreakEvent event) {
         if (!event.isCancelled()) {
@@ -672,7 +669,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== COMMANDS ====================
     public class ProfileCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
@@ -768,68 +764,4 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 return true;
             }
             target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
-            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
-            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
-            return true;
-        }
-    }
-
-    public class GiveItemCommand implements CommandExecutor {
-        @Override
-        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-            if (args.length < 1) {
-                sender.sendMessage(color("&cUsage: /schoollevelgiveitem <player>"));
-                return true;
-            }
-            if (!sender.hasPermission("schoollevel.admin")) {
-                sender.sendMessage(color("&cYou don't have permission!"));
-                return true;
-            }
-            Player target = Bukkit.getPlayer(args[0]);
-            if (target == null) {
-                sender.sendMessage(color("&cPlayer not found!"));
-                return true;
-            }
-            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
-            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
-            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
-            return true;
-        }
-    }
-
-    // ==================== GUI ====================
-    public class ProfileGUI {
-        private final Player player;
-        private final Inventory inventory;
-
-        public ProfileGUI(Player player) {
-            this.player = player;
-            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh ✦"));
-        }
-
-        public void open() {
-            DataManager.PlayerData data = dataManager.getPlayerData(player);
-
-            ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-            ItemMeta glassMeta = glass.getItemMeta();
-            glassMeta.setDisplayName(" ");
-            glass.setItemMeta(glassMeta);
-            for (int i = 0; i < 54; i++) inventory.setItem(i, glass);
-
-            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta headMeta = (SkullMeta) head.getItemMeta();
-            headMeta.setOwningPlayer(player);
-            headMeta.setDisplayName(color("&6&l" + player.getName()));
-            headMeta.setLore(Arrays.asList(color("&7Thông tin chi tiết của bạn")));
-            head.setItemMeta(headMeta);
-            inventory.setItem(4, head);
-
-            double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
-            double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
-            double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
-            int level = data.getLevel();
-            double xp = data.getXp();
-            double required = levelManager.getRequiredXP(level);
-            double money = data.getMoney();
-
-            inventory.setItem(20
+            sender.sendMessage(color("&
