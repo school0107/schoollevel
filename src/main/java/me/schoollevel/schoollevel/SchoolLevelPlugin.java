@@ -886,7 +886,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             ItemStack item = new ItemStack(material);
             ItemMeta meta = item.getItemMeta();
             meta.setDisplayName(color(name));
-            meta.setLore(lore.stream().map(this::color).toList());
+            meta.setLore(lore.stream().map(line -> color(line)).toList());
             item.setItemMeta(meta);
             return item;
         }
