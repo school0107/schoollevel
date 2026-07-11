@@ -25,6 +25,7 @@ import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -201,7 +202,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             moneyMultipliers.put("schoollevel.money.4", 4.0);
             moneyMultipliers.put("schoollevel.money.5", 5.0);
             
-            // OVERRIDE FROM CONFIG IF EXISTS
             if (config.contains("permission-multipliers.xp")) {
                 for (String key : config.getConfigurationSection("permission-multipliers.xp").getKeys(false)) {
                     xpMultipliers.put(key, config.getDouble("permission-multipliers.xp." + key));
@@ -221,7 +221,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double highest = 1.0;
             for (Map.Entry<String, Double> entry : xpMultipliers.entrySet()) {
                 if (player.hasPermission(entry.getKey())) {
-                    getLogger().info("🔍 " + player.getName() + " has " + entry.getKey() + " = " + entry.getValue() + "x");
                     if (entry.getValue() > highest) {
                         highest = entry.getValue();
                     }
@@ -234,7 +233,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double highest = 1.0;
             for (Map.Entry<String, Double> entry : moneyMultipliers.entrySet()) {
                 if (player.hasPermission(entry.getKey())) {
-                    getLogger().info("🔍 " + player.getName() + " has " + entry.getKey() + " = " + entry.getValue() + "x");
                     if (entry.getValue() > highest) {
                         highest = entry.getValue();
                     }
@@ -780,6 +778,15 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 breakthroughManager.performBreakthrough(event.getPlayer());
                 item.setAmount(item.getAmount() - 1);
             }
+        }
+    }
+
+    // ==================== GUI CLICK EVENT ====================
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        if (event.getView().getTitle().equals(color("&6&l✦ Thông Tin Học Sinh ✦"))) {
+            event.setCancelled(true);
         }
     }
 
