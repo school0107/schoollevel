@@ -912,4 +912,4 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             inventory.setItem(4, head);
 
             double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
-            double damage = player.getAttribute(Attribute.GENERIC_ád
+            double damage = player.getAttribute(Attribute.GENERIC_
