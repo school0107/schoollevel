@@ -1,25 +1,56 @@
-name: Build
+name: Build SchoolLevel Plugin
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Build
-        run: |
-          mkdir -p target/classes
-          javac -cp "$(find ~/.m2/repository/io/papermc/paper -name '*.jar' | head -1)" -d target/classes src/main/java/com/schoolnap/*.java src/main/java/com/schoolnap/**/*.java 2>/dev/null || true
-          cp -r src/main/resources/* target/classes/
-          cd target/classes && jar cf ../SchoolNap.jar . && cd ../..
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: SchoolNap
-          path: target/SchoolNap.jar
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Build with Maven
+      run: mvn clean package
+    
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SchoolLevel-JAR
+        path: target/*.jar
+        if-no-files-found: error
+    
+    - name: Get JAR name
+      id: get_jar
+      run: |
+        JAR_NAME=$(ls target/*.jar | head -1 | xargs basename)
+        echo "jar_name=$JAR_NAME" >> $GITHUB_OUTPUT
+        echo "Found JAR: $JAR_NAME"
+    
+    - name: Create Release
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: |
+          target/*.jar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
