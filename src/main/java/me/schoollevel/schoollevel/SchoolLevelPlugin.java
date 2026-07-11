@@ -191,21 +191,30 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             FileConfiguration config = getConfig();
             
+            // DEFAULT VALUES
+            xpMultipliers.put("schoollevel.xp.2", 2.0);
+            xpMultipliers.put("schoollevel.xp.3", 3.0);
+            xpMultipliers.put("schoollevel.xp.4", 4.0);
+            xpMultipliers.put("schoollevel.xp.5", 5.0);
+            moneyMultipliers.put("schoollevel.money.2", 2.0);
+            moneyMultipliers.put("schoollevel.money.3", 3.0);
+            moneyMultipliers.put("schoollevel.money.4", 4.0);
+            moneyMultipliers.put("schoollevel.money.5", 5.0);
+            
+            // OVERRIDE FROM CONFIG IF EXISTS
             if (config.contains("permission-multipliers.xp")) {
                 for (String key : config.getConfigurationSection("permission-multipliers.xp").getKeys(false)) {
-                    double value = config.getDouble("permission-multipliers.xp." + key);
-                    xpMultipliers.put(key, value);
-                    getLogger().info("✅ Loaded XP: " + key + " = " + value + "x");
+                    xpMultipliers.put(key, config.getDouble("permission-multipliers.xp." + key));
+                }
+            }
+            if (config.contains("permission-multipliers.money")) {
+                for (String key : config.getConfigurationSection("permission-multipliers.money").getKeys(false)) {
+                    moneyMultipliers.put(key, config.getDouble("permission-multipliers.money." + key));
                 }
             }
             
-            if (config.contains("permission-multipliers.money")) {
-                for (String key : config.getConfigurationSection("permission-multipliers.money").getKeys(false)) {
-                    double value = config.getDouble("permission-multipliers.money." + key);
-                    moneyMultipliers.put(key, value);
-                    getLogger().info("✅ Loaded Money: " + key + " = " + value + "x");
-                }
-            }
+            getLogger().info("✅ Loaded " + xpMultipliers.size() + " XP multipliers");
+            getLogger().info("✅ Loaded " + moneyMultipliers.size() + " Money multipliers");
         }
         
         public double getXPMultiplier(Player player) {
