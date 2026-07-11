@@ -1,4 +1,4 @@
-package com.schoollevel;
+package me.schoollevel.schoollevel;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -247,31 +247,39 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
     // ==================== ATTRIBUTE MANAGER ====================
     public class AttributeManager {
-        private static final UUID HEALTH_MODIFIER = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
-        private static final UUID DAMAGE_MODIFIER = UUID.fromString("b2c3d4e5-f6a7-8901-bcde-f23456789012");
-        private static final UUID SPEED_MODIFIER = UUID.fromString("c3d4e5f6-a7b8-9012-cdef-345678901234");
+        private static final String HEALTH_MODIFIER = "schoollevel_health";
+        private static final String DAMAGE_MODIFIER = "schoollevel_damage";
+        private static final String SPEED_MODIFIER = "schoollevel_speed";
 
         public void updateAttributes(Player player) {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int level = data.getLevel();
             double bonus = level * 0.01;
             
+            // Sử dụng NamespacedKey thay vì UUID cho 1.21+
             updateAttribute(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
             updateAttribute(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
             updateAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
         }
 
-        private void updateAttribute(Player player, Attribute attribute, UUID modifierUUID, double amount) {
+        private void updateAttribute(Player player, Attribute attribute, String modifierName, double amount) {
             AttributeInstance instance = player.getAttribute(attribute);
             if (instance == null) return;
             
+            // Remove existing modifier
             instance.getModifiers().stream()
-                .filter(mod -> mod.getUniqueId().equals(modifierUUID))
+                .filter(mod -> mod.getKey() != null && mod.getKey().getKey().equals(modifierName))
                 .forEach(instance::removeModifier);
             
             if (amount > 0) {
-                instance.addModifier(new AttributeModifier(modifierUUID, "SchoolLevel", 
-                    amount, AttributeModifier.Operation.ADD_NUMBER));
+                // Tạo NamespacedKey
+                NamespacedKey key = new NamespacedKey(SchoolLevelPlugin.this, modifierName);
+                AttributeModifier modifier = new AttributeModifier(
+                    key,
+                    amount,
+                    AttributeModifier.Operation.ADD_NUMBER
+                );
+                instance.addModifier(modifier);
             }
         }
     }
