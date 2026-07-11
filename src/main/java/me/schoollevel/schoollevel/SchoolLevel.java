@@ -1,14 +1,11 @@
-package me.schoollevel.schoollevel;
+// SchoolLevelPlugin.java - File duy nhất cho toàn bộ plugin
+package com.schoollevel;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.kyori.adventure.title.Title;
-import net.kyori.adventure.util.Ticks;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Statistic;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
@@ -20,608 +17,625 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerExpChangeEvent;
+import org.bukkit.event.block.Action;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.Statistic;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.DecimalFormat;
+import java.util.*;
 import java.util.UUID;
 
-public final class SchoolLevel extends JavaPlugin implements Listener, CommandExecutor {
+public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
-    private final MiniMessage mm = MiniMessage.miniMessage();
-    private final Map<UUID, PlayerData> dataCache = new HashMap<>();
-    private final Map<Material, Integer> blockXpMap = new HashMap<>();
-    private final Map<EntityType, Integer> mobXpMap = new HashMap<>();
-    private File dataFile;
-    private FileConfiguration dataConfig;
+    // ==================== SINGLETON ====================
+    private static SchoolLevelPlugin instance;
 
-    private NamespacedKey healthKey;
-    private NamespacedKey damageKey;
-    private NamespacedKey speedKey;
-    private NamespacedKey itemKey;
-    private String menuTitleSerialized = "📊 BẢNG THÔNG TIN NGƯỜI CHƠI";
+    // ==================== MANAGERS ====================
+    private DataManager dataManager;
+    private LevelManager levelManager;
+    private AttributeManager attributeManager;
+    private XPManager xpManager;
+    private BreakthroughManager breakthroughManager;
+    private ActionBarManager actionBarManager;
 
+    // ==================== PLUGIN LIFECYCLE ====================
     @Override
     public void onEnable() {
-        saveDefaultConfig();
-        loadConfigData();
-        createDataFile();
-
-        healthKey = new NamespacedKey(this, "schoollevel_health");
-        damageKey = new NamespacedKey(this, "schoollevel_damage");
-        speedKey = new NamespacedKey(this, "schoollevel_speed");
-        itemKey = new NamespacedKey(this, "breakthrough_item");
+        instance = this;
         
+        saveDefaultConfig();
+        reloadConfig();
+        
+        // Initialize managers
+        dataManager = new DataManager();
+        levelManager = new LevelManager();
+        attributeManager = new AttributeManager();
+        xpManager = new XPManager();
+        breakthroughManager = new BreakthroughManager();
+        actionBarManager = new ActionBarManager();
+        
+        // Register commands
+        Objects.requireNonNull(getCommand("profile")).setExecutor(new ProfileCommand());
+        Objects.requireNonNull(getCommand("schoollevel")).setExecutor(new SchoolLevelCommand());
+        Objects.requireNonNull(getCommand("schoollevelgiveitem")).setExecutor(new GiveItemCommand());
+        
+        // Register events
         getServer().getPluginManager().registerEvents(this, this);
         
-        if (getCommand("schoollevel") != null) getCommand("schoollevel").setExecutor(this);
-        if (getCommand("profile") != null) getCommand("profile").setExecutor(this);
-        
-        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            new SchoolLevelPlaceholderExpansion(this).register();
-            getLogger().info("Đã kết nối và kích hoạt toàn bộ PlaceholderAPI mở rộng! 🟢");
+        // Register PlaceholderAPI
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new SchoolLevelExpansion().register();
+            getLogger().info("✅ PlaceholderAPI registered!");
         }
         
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            updatePlayerAttributes(player);
-            syncVanillaXpBar(player);
-        }
-
-        startActionBarTask();
-        getLogger().info("SchoolLevel kích hoạt thành công trên nền tảng Paper/Purpur 1.21+! 🚀");
+        // Action bar updater
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                actionBarManager.updateAllPlayers();
+            }
+        }.runTaskTimer(this, 0, 20);
+        
+        getLogger().info("§a✅ SchoolLevel Plugin enabled!");
     }
 
     @Override
     public void onDisable() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            removeAttributeModifiers(player);
-        }
-        saveAllData();
+        if (dataManager != null) dataManager.saveAllData();
+        getLogger().info("§c❌ SchoolLevel Plugin disabled!");
     }
 
-    private void loadConfigData() {
-        reloadConfig();
-        blockXpMap.clear();
-        mobXpMap.clear();
+    public static SchoolLevelPlugin getInstance() { return instance; }
+    public DataManager getDataManager() { return dataManager; }
+    public LevelManager getLevelManager() { return levelManager; }
+    public AttributeManager getAttributeManager() { return attributeManager; }
+    public XPManager getXpManager() { return xpManager; }
+    public BreakthroughManager getBreakthroughManager() { return breakthroughManager; }
+    public ActionBarManager getActionBarManager() { return actionBarManager; }
 
-        FileConfiguration config = getConfig();
-        menuTitleSerialized = config.getString("menu.title", "📊 BẢNG THÔNG TIN NGƯỜI CHƠI");
-        
-        if (config.getConfigurationSection("blocks") != null) {
-            for (String key : config.getConfigurationSection("blocks").getKeys(false)) {
+    // ==================== DATA MANAGER ====================
+    public class DataManager {
+        private final Map<UUID, PlayerData> playerDataMap = new HashMap<>();
+        private final File dataFile;
+        private FileConfiguration dataConfig;
+
+        public DataManager() {
+            this.dataFile = new File(SchoolLevelPlugin.this.getDataFolder(), "data.yml");
+            if (!dataFile.exists()) saveResource("data.yml", false);
+            this.dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+            loadAllData();
+        }
+
+        public PlayerData getPlayerData(Player player) {
+            UUID uuid = player.getUniqueId();
+            playerDataMap.computeIfAbsent(uuid, k -> new PlayerData(uuid));
+            return playerDataMap.get(uuid);
+        }
+
+        public void savePlayerData(Player player) {
+            UUID uuid = player.getUniqueId();
+            if (playerDataMap.containsKey(uuid)) {
+                PlayerData data = playerDataMap.get(uuid);
+                String path = uuid.toString();
+                dataConfig.set(path + ".level", data.getLevel());
+                dataConfig.set(path + ".xp", data.getXp());
+                dataConfig.set(path + ".blocksBroken", data.getBlocksBroken());
+                dataConfig.set(path + ".hasBrokenThrough", data.hasBrokenThrough());
+                saveData();
+            }
+        }
+
+        public void saveAllData() {
+            for (Map.Entry<UUID, PlayerData> entry : playerDataMap.entrySet()) {
+                PlayerData data = entry.getValue();
+                String path = entry.getKey().toString();
+                dataConfig.set(path + ".level", data.getLevel());
+                dataConfig.set(path + ".xp", data.getXp());
+                dataConfig.set(path + ".blocksBroken", data.getBlocksBroken());
+                dataConfig.set(path + ".hasBrokenThrough", data.hasBrokenThrough());
+            }
+            saveData();
+        }
+
+        private void loadAllData() {
+            for (String uuidStr : dataConfig.getKeys(false)) {
+                UUID uuid = UUID.fromString(uuidStr);
+                PlayerData data = new PlayerData(uuid);
+                data.setLevel(dataConfig.getInt(uuidStr + ".level", 1));
+                data.setXp(dataConfig.getDouble(uuidStr + ".xp", 0));
+                data.setBlocksBroken(dataConfig.getInt(uuidStr + ".blocksBroken", 0));
+                data.setHasBrokenThrough(dataConfig.getBoolean(uuidStr + ".hasBrokenThrough", false));
+                playerDataMap.put(uuid, data);
+            }
+        }
+
+        private void saveData() {
+            try { dataConfig.save(dataFile); } catch (Exception e) { e.printStackTrace(); }
+        }
+
+        public void reload() {
+            dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+            playerDataMap.clear();
+            loadAllData();
+        }
+
+        public class PlayerData {
+            private final UUID uuid;
+            private int level = 1;
+            private double xp = 0;
+            private int blocksBroken = 0;
+            private boolean hasBrokenThrough = false;
+
+            public PlayerData(UUID uuid) { this.uuid = uuid; }
+            public UUID getUuid() { return uuid; }
+            public int getLevel() { return level; }
+            public void setLevel(int level) { this.level = level; }
+            public double getXp() { return xp; }
+            public void setXp(double xp) { this.xp = xp; }
+            public void addXp(double amount) { this.xp += amount; }
+            public int getBlocksBroken() { return blocksBroken; }
+            public void setBlocksBroken(int blocks) { this.blocksBroken = blocks; }
+            public void incrementBlocksBroken() { this.blocksBroken++; }
+            public boolean hasBrokenThrough() { return hasBrokenThrough; }
+            public void setHasBrokenThrough(boolean has) { this.hasBrokenThrough = has; }
+        }
+    }
+
+    // ==================== LEVEL MANAGER ====================
+    public class LevelManager {
+        private static final int MAX_LEVEL = 100;
+        private static final int LEGENDARY_LEVEL = 101;
+
+        public double getRequiredXP(int level) {
+            return 100 * Math.pow(level, 1.5);
+        }
+
+        public void addXP(Player player, double amount) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int currentLevel = data.getLevel();
+            
+            if (currentLevel >= MAX_LEVEL && !data.hasBrokenThrough()) {
+                breakthroughManager.notifyBreakthrough(player);
+                return;
+            }
+            if (currentLevel >= LEGENDARY_LEVEL) return;
+            
+            data.addXp(amount);
+            
+            while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < LEGENDARY_LEVEL) {
+                data.setXp(data.getXp() - getRequiredXP(data.getLevel()));
+                levelUp(player);
+            }
+            
+            attributeManager.updateAttributes(player);
+            dataManager.savePlayerData(player);
+        }
+
+        private void levelUp(Player player) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int newLevel = data.getLevel() + 1;
+            data.setLevel(newLevel);
+            
+            attributeManager.updateAttributes(player);
+            
+            String message = getConfig().getString("messages.level-up", "&6&l⬆ &fBạn đã lên &6Cấp %level%&f!")
+                    .replace("%level%", String.valueOf(newLevel));
+            player.sendMessage(color(message));
+            
+            for (String cmd : getConfig().getStringList("commands.level-up")) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
+                    cmd.replace("%player%", player.getName()).replace("%level%", String.valueOf(newLevel)));
+            }
+        }
+    }
+
+    // ==================== ATTRIBUTE MANAGER ====================
+    public class AttributeManager {
+        private static final UUID HEALTH_MODIFIER = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+        private static final UUID DAMAGE_MODIFIER = UUID.fromString("b2c3d4e5-f6a7-8901-bcde-f23456789012");
+        private static final UUID SPEED_MODIFIER = UUID.fromString("c3d4e5f6-a7b8-9012-cdef-345678901234");
+
+        public void updateAttributes(Player player) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int level = data.getLevel();
+            double bonus = level * 0.01;
+            
+            updateAttribute(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
+            updateAttribute(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
+            updateAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
+        }
+
+        private void updateAttribute(Player player, Attribute attribute, UUID modifierUUID, double amount) {
+            AttributeInstance instance = player.getAttribute(attribute);
+            if (instance == null) return;
+            
+            instance.getModifiers().stream()
+                .filter(mod -> mod.getUniqueId().equals(modifierUUID))
+                .forEach(instance::removeModifier);
+            
+            if (amount > 0) {
+                instance.addModifier(new AttributeModifier(modifierUUID, "SchoolLevel", 
+                    amount, AttributeModifier.Operation.ADD_NUMBER));
+            }
+        }
+    }
+
+    // ==================== XP MANAGER ====================
+    public class XPManager {
+        private final Map<Material, Double> blockXP = new HashMap<>();
+        private final Map<EntityType, Double> mobXP = new HashMap<>();
+
+        public XPManager() { loadXPConfig(); }
+
+        public void loadXPConfig() {
+            blockXP.clear();
+            for (String key : getConfig().getConfigurationSection("xp.blocks").getKeys(false)) {
+                Material mat = Material.getMaterial(key.toUpperCase());
+                if (mat != null) blockXP.put(mat, getConfig().getDouble("xp.blocks." + key));
+            }
+            
+            mobXP.clear();
+            for (String key : getConfig().getConfigurationSection("xp.mobs").getKeys(false)) {
                 try {
-                    blockXpMap.put(Material.valueOf(key.toUpperCase()), config.getInt("blocks." + key));
+                    EntityType type = EntityType.valueOf(key.toUpperCase());
+                    mobXP.put(type, getConfig().getDouble("xp.mobs." + key));
                 } catch (IllegalArgumentException ignored) {}
             }
         }
 
-        if (config.getConfigurationSection("mobs") != null) {
-            for (String key : config.getConfigurationSection("mobs").getKeys(false)) {
-                try {
-                    mobXpMap.put(EntityType.valueOf(key.toUpperCase()), config.getInt("mobs." + key));
-                } catch (IllegalArgumentException ignored) {}
+        public void handleBlockBreak(Player player, Material material) {
+            double xp = blockXP.getOrDefault(material, 0.0);
+            if (xp > 0) {
+                levelManager.addXP(player, xp);
+                dataManager.getPlayerData(player).incrementBlocksBroken();
             }
         }
-    }
 
-    private void createDataFile() {
-        dataFile = new File(getDataFolder(), "data.yml");
-        if (!dataFile.exists()) {
-            try {
-                dataFile.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        dataConfig = YamlConfiguration.loadConfiguration(dataFile);
-    }
-
-    public PlayerData getPlayerData(UUID uuid) {
-        return dataCache.computeIfAbsent(uuid, k -> {
-            int lvl = dataConfig.getInt(uuid + ".level", 1);
-            int xp = dataConfig.getInt(uuid + ".xp", 0);
-            int blocks = dataConfig.getInt(uuid + ".blocks_broken", 0);
-            return new PlayerData(lvl, xp, blocks);
-        });
-    }
-
-    private void saveAllData() {
-        dataCache.forEach((uuid, data) -> {
-            dataConfig.set(uuid + ".level", data.level);
-            dataConfig.set(uuid + ".xp", data.xp);
-            dataConfig.set(uuid + ".blocks_broken", data.blocksBroken);
-        });
-        try {
-            dataConfig.save(dataFile);
-        } catch (IOException e) {
-            e.printStackTrace();
+        public void handleMobKill(Player player, EntityType entityType) {
+            double xp = mobXP.getOrDefault(entityType, 0.0);
+            if (xp > 0) levelManager.addXP(player, xp);
         }
     }
 
-    public int getRequiredXp(int level) {
-        int base = getConfig().getInt("settings.base-xp", 100);
-        double mult = getConfig().getDouble("settings.xp-multiplier", 1.5);
-        return (int) (base * Math.pow(mult, level - 1));
-    }
+    // ==================== BREAKTHROUGH MANAGER ====================
+    public class BreakthroughManager {
+        private final NamespacedKey BREAKTHROUGH_KEY = new NamespacedKey(SchoolLevelPlugin.this, "breakthrough_item");
 
-    private void msg(CommandSender sender, String path, String... placeholders) {
-        String message = getConfig().getString("messages." + path, "");
-        for (int i = 0; i < placeholders.length; i += 2) {
-            message = message.replace(placeholders[i], placeholders[i + 1]);
-        }
-        String prefix = getConfig().getString("messages.prefix", "");
-        sender.sendMessage(mm.deserialize(prefix + message));
-    }
-
-    private void sendLevelUpTitle(Player player, int level) {
-        String titleText = getConfig().getString("messages.level-up-title", "<yellow><b>LÊN CẤP!</b></yellow>")
-                .replace("%level%", String.valueOf(level));
-        String subtitleText = getConfig().getString("messages.level-up-subtitle", "Bạn đã đạt cấp %level%")
-                .replace("%level%", String.valueOf(level));
-
-        Title title = Title.title(
-                mm.deserialize(titleText),
-                mm.deserialize(subtitleText),
-                Title.Times.times(Ticks.duration(10), Ticks.duration(40), Ticks.duration(10))
-        );
-        player.showTitle(title);
-    }
-
-    private void syncVanillaXpBar(Player player) {
-        PlayerData data = getPlayerData(player.getUniqueId());
-        player.setLevel(data.level);
-        
-        if (data.level >= 101) {
-            player.setExp(1.0F);
-        } else {
-            int req = getRequiredXp(data.level);
-            float progress = (float) data.xp / (float) req;
-            player.setExp(Math.min(1.0F, Math.max(0.0F, progress)));
-        }
-    }
-
-    private void updatePlayerAttributes(Player player) {
-        PlayerData data = getPlayerData(player.getUniqueId());
-        double percentBonus = data.level * 0.01;
-
-        applyModifier(player, Attribute.GENERIC_MAX_HEALTH, healthKey, percentBonus);
-        applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, damageKey, percentBonus);
-        applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, speedKey, percentBonus);
-    }
-
-    private void applyModifier(Player player, Attribute attribute, NamespacedKey key, double amount) {
-        AttributeInstance instance = player.getAttribute(attribute);
-        if (instance == null) return;
-        instance.removeModifier(key);
-        if (amount > 0) {
-            // Sửa đổi phương thức khởi tạo chuẩn 1.21+ sử dụng EquipmentSlotGroup.ANY để tăng thuộc tính vĩnh viễn không lỗi build
-            AttributeModifier modifier = new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_SCALAR, org.bukkit.inventory.EquipmentSlotGroup.ANY);
-            instance.addModifier(modifier);
-        }
-    }
-
-    private void removeAttributeModifiers(Player player) {
-        AttributeInstance health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-        if (health != null) health.removeModifier(healthKey);
-
-        AttributeInstance damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
-        if (damage != null) damage.removeModifier(damageKey);
-
-        AttributeInstance speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
-        if (speed != null) speed.removeModifier(speedKey);
-    }
-
-    private void startActionBarTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                FileConfiguration config = getConfig();
-                if (!config.getBoolean("actionbar.enabled", true)) return;
-
-                String format = config.getString("actionbar.format", "");
-                if (format.isEmpty()) return;
-
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    PlayerData data = getPlayerData(player.getUniqueId());
-                    int nextXp = data.level >= 101 ? 0 : getRequiredXp(data.level);
-                    
-                    double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
-                    double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE) != null ? player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() : 1.0;
-                    double armor = player.getAttribute(Attribute.GENERIC_ARMOR) != null ? player.getAttribute(Attribute.GENERIC_ARMOR).getValue() : 0.0;
-                    
-                    String pb = "MAX";
-                    if (data.level < 101 && nextXp > 0) {
-                        int totalBars = 10;
-                        int filledBars = (int) (((double) data.xp / nextXp) * totalBars);
-                        filledBars = Math.min(totalBars, Math.max(0, filledBars));
-                        pb = "■".repeat(filledBars) + "□".repeat(totalBars - filledBars);
-                    }
-
-                    String text = format
-                            .replace("%level%", String.valueOf(data.level))
-                            .replace("%xp%", String.valueOf(data.xp))
-                            .replace("%next_xp%", data.level >= 101 ? "MAX" : String.valueOf(nextXp))
-                            .replace("%progress_bar%", pb)
-                            .replace("%health%", String.format("%.0f", player.getHealth()))
-                            .replace("%max_health%", String.format("%.0f", health))
-                            .replace("%damage%", String.format("%.1f", damage))
-                            .replace("%armor%", String.format("%.1f", armor));
-
-                    player.sendActionBar(mm.deserialize(text));
-                }
-            }
-        }.runTaskTimer(this, 0L, 20L);
-    }
-
-    private ItemStack createBreakthroughItem() {
-        FileConfiguration config = getConfig();
-        String path = "breakthrough-item";
-        
-        Material mat = Material.valueOf(config.getString(path + ".material", "NETHER_STAR").toUpperCase());
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-        
-        if (meta != null) {
-            meta.displayName(mm.deserialize(config.getString(path + ".name", "<gradient:#f12711:#f5af19><b>🔥 ĐÁ ĐỘT PHÁ THẦN CẤP 🔥</b></gradient>")));
-            List<String> rawLore = config.getStringList(path + ".lore");
-            List<Component> lore = new ArrayList<>();
-            for (String line : rawLore) {
-                lore.add(mm.deserialize(line));
-            }
-            meta.lore(lore);
-            meta.setCustomModelData(config.getInt(path + ".custom-model-data", 0));
-            meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, "true");
+        public ItemStack createBreakthroughItem() {
+            ItemStack item = new ItemStack(Material.NETHER_STAR);
+            ItemMeta meta = item.getItemMeta();
+            meta.setDisplayName(color("&6&l✦ Đá Đột Phá Thần Cấp ✦"));
+            meta.setLore(Arrays.asList(
+                color("&7&oMở khóa sức mạnh tiềm ẩn..."),
+                "",
+                color("&e&l⚠ &fClick chuột phải để đột phá!"),
+                color("&c&l✦ &fYêu cầu: &6Cấp 100")
+            ));
+            meta.getPersistentDataContainer().set(BREAKTHROUGH_KEY, PersistentDataType.BOOLEAN, true);
             item.setItemMeta(meta);
+            return item;
         }
-        return item;
+
+        public boolean isBreakthroughItem(ItemStack item) {
+            if (item == null || !item.hasItemMeta()) return false;
+            return item.getItemMeta().getPersistentDataContainer().has(BREAKTHROUGH_KEY, PersistentDataType.BOOLEAN);
+        }
+
+        public void performBreakthrough(Player player) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            
+            if (data.getLevel() < 100) {
+                player.sendMessage(color("&c❌ Bạn cần đạt &6Cấp 100 &cđể sử dụng!"));
+                return;
+            }
+            if (data.hasBrokenThrough()) {
+                player.sendMessage(color("&c❌ Bạn đã đột phá rồi!"));
+                return;
+            }
+            
+            data.setLevel(101);
+            data.setHasBrokenThrough(true);
+            attributeManager.updateAttributes(player);
+            dataManager.savePlayerData(player);
+            
+            String broadcast = getConfig().getString("messages.breakthrough", 
+                "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! ✦")
+                .replace("%player%", player.getName());
+            Bukkit.broadcastMessage(color(broadcast));
+            
+            for (String cmd : getConfig().getStringList("commands.breakthrough")) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
+                    cmd.replace("%player%", player.getName()));
+            }
+            
+            player.getWorld().strikeLightningEffect(player.getLocation());
+            for (int i = 0; i < 20; i++) {
+                player.getWorld().spawnParticle(org.bukkit.Particle.FLAME, 
+                    player.getLocation().add(0, 1, 0), 50, 1, 2, 1, 0.1);
+            }
+        }
+
+        public void notifyBreakthrough(Player player) {
+            player.sendMessage(color("&e&l✦ &fBạn đã đạt &6Cấp 100&f!"));
+            player.sendMessage(color("&e&l✦ &fSử dụng &6Đá Đột Phá &fđể lên &6Cấp 101"));
+            player.sendMessage(color("&e&l✦ &fGõ &6/schoollevel giveitem " + player.getName() + " &fđể nhận vật phẩm"));
+        }
+    }
+
+    // ==================== ACTION BAR MANAGER ====================
+    public class ActionBarManager {
+        public void updateAllPlayers() {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                updatePlayerActionBar(player);
+            }
+        }
+
+        public void updatePlayerActionBar(Player player) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int level = data.getLevel();
+            double xp = data.getXp();
+            double required = levelManager.getRequiredXP(level);
+            
+            int progress = Math.min((int) ((xp / required) * 20), 20);
+            String bar = "■".repeat(Math.max(0, progress)) + "□".repeat(Math.max(0, 20 - progress));
+            
+            double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+            double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
+            double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
+            
+            String text = String.format(
+                "&e⚡ &fCấp &6%d &7| &a%s &fXP: &b%.0f/%.0f &7| &c❤ %.1f &7| &6⚔ %.1f &7| &b✦ %.2f",
+                level, bar, xp, required, health, damage, speed
+            );
+            
+            player.sendActionBar(Component.text(color(text)));
+        }
+    }
+
+    // ==================== EVENTS ====================
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        if (!event.isCancelled()) {
+            xpManager.handleBlockBreak(event.getPlayer(), event.getBlock().getType());
+        }
     }
 
     @EventHandler
-    public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        
-        Player player = event.getPlayer();
-        ItemStack item = event.getItem();
-        if (item == null || item.getType() == Material.AIR) return;
-        if (!item.hasItemMeta()) return;
-        
-        ItemMeta meta = item.getItemMeta();
-        if (!meta.getPersistentDataContainer().has(itemKey, PersistentDataType.STRING)) return;
-        
-        event.setCancelled(true);
-        PlayerData data = getPlayerData(player.getUniqueId());
-        
-        if (data.level < 100) {
-            msg(player, "not-max");
-            return;
-        }
-        if (data.level >= 101) {
-            msg(player, "already-break");
-            return;
-        }
-        
-        item.setAmount(item.getAmount() - 1);
-        data.level = 101;
-        data.xp = 0;
-        
-        updatePlayerAttributes(player);
-        syncVanillaXpBar(player);
-        msg(player, "breakthrough-success");
-        
-        player.showTitle(Title.title(
-                mm.deserialize("<gradient:#f12711:#f5af19><b>🔥 ĐỘT PHÁ THÀNH CÔNG 🔥</b></gradient>"),
-                mm.deserialize("<#ffff00>Đã phá vỡ giới hạn để đạt cấp 101! 👑"),
-                Title.Times.times(Ticks.duration(15), Ticks.duration(60), Ticks.duration(15))
-        ));
-
-        List<String> commands = getConfig().getStringList("breakthrough-item.commands-on-success");
-        for (String cmd : commands) {
-            String executable = cmd.replace("%player%", player.getName());
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), executable);
+    public void onEntityDeath(EntityDeathEvent event) {
+        Player killer = event.getEntity().getKiller();
+        if (killer != null) {
+            xpManager.handleMobKill(killer, event.getEntity().getType());
         }
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        updatePlayerAttributes(player);
-        syncVanillaXpBar(player);
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onVanillaExpChange(PlayerExpChangeEvent event) {
-        event.setAmount(0);
-        syncVanillaXpBar(event.getPlayer());
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
-        Player p = event.getPlayer();
-        if (p == null) return;
-
-        Material blockType = event.getBlock().getType();
-        if (!blockXpMap.containsKey(blockType)) return;
-
-        PlayerData data = getPlayerData(p.getUniqueId());
-        data.blocksBroken++;
-
-        int xpToAdd = blockXpMap.getOrDefault(blockType, 0);
-        if (xpToAdd > 0) addXp(p, xpToAdd);
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onMobKill(EntityDeathEvent event) {
-        Player killer = event.getEntity().getKiller();
-        if (killer == null) return;
-        int xpToAdd = mobXpMap.getOrDefault(event.getEntityType(), 0);
-        if (xpToAdd > 0) addXp(killer, xpToAdd);
-    }
-
-    private void addXp(Player player, int amount) {
-        PlayerData data = getPlayerData(player.getUniqueId());
-        if (data.level >= 100) {
-            if (data.level == 100) {
-                msg(player, "breakthrough-needed");
-            }
-            syncVanillaXpBar(player);
-            return;
-        }
-
-        data.xp += amount;
-        int req = getRequiredXp(data.level);
-        boolean leveledUp = false;
-
-        while (data.xp >= req && data.level < 100) {
-            data.xp -= req;
-            data.level++;
-            leveledUp = true;
-            msg(player, "level-up", "%level%", String.valueOf(data.level));
-            sendLevelUpTitle(player, data.level);
-            req = getRequiredXp(data.level);
-        }
-
-        if (leveledUp) {
-            updatePlayerAttributes(player);
-        }
-        syncVanillaXpBar(player);
-    }
-
-    public void openProfileMenu(Player player) {
-        FileConfiguration config = getConfig();
-        int size = config.getInt("menu.size", 27);
-        Component titleComponent = mm.deserialize(menuTitleSerialized);
-        
-        Inventory gui = Bukkit.createInventory(null, size, titleComponent);
-
-        Material fillerMat = Material.valueOf(config.getString("menu.filler.material", "GRAY_STAINED_GLASS_PANE").toUpperCase());
-        ItemStack fillerItem = new ItemStack(fillerMat);
-        ItemMeta fillerMeta = fillerItem.getItemMeta();
-        if (fillerMeta != null) {
-            fillerMeta.displayName(mm.deserialize(config.getString("menu.filler.name", " ")));
-            fillerItem.setItemMeta(fillerMeta);
-        }
-        List<Integer> fillerSlots = config.getIntegerList("menu.filler.slots");
-        for (int slot : fillerSlots) {
-            if (slot < size) gui.setItem(slot, fillerItem);
-        }
-
-        PlayerData data = getPlayerData(player.getUniqueId());
-        int nextXp = data.level >= 101 ? 0 : getRequiredXp(data.level);
-        
-        double totalHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
-        double totalDamage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE) != null ? player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() : 1.0;
-        double totalArmor = player.getAttribute(Attribute.GENERIC_ARMOR) != null ? player.getAttribute(Attribute.GENERIC_ARMOR).getValue() : 0.0;
-        double totalSpeed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED) != null ? player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() : 0.1;
-        int minutesOnline = player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60;
-
-        setupMenuIcon(gui, player, "menu.stats.level", data.level, data.xp, nextXp, totalHealth, totalDamage, totalArmor, totalSpeed, data.blocksBroken, minutesOnline);
-        setupMenuIcon(gui, player, "menu.stats.combat", data.level, data.xp, nextXp, totalHealth, totalDamage, totalArmor, totalSpeed, data.blocksBroken, minutesOnline);
-        setupMenuIcon(gui, player, "menu.stats.activity", data.level, data.xp, nextXp, totalHealth, totalDamage, totalArmor, totalSpeed, data.blocksBroken, minutesOnline);
-
-        String closePath = "menu.close_button";
-        int closeSlot = config.getInt(closePath + ".slot", 22);
-        Material closeMat = Material.valueOf(config.getString(closePath + ".material", "BARRIER").toUpperCase());
-        ItemStack closeItem = new ItemStack(closeMat);
-        ItemMeta closeMeta = closeItem.getItemMeta();
-        if (closeMeta != null) {
-            closeMeta.displayName(mm.deserialize(config.getString(closePath + ".name", "<red>Đóng</red>")));
-            List<String> rawLore = config.getStringList(closePath + ".lore");
-            List<Component> loreComponents = new ArrayList<>();
-            for (String line : rawLore) loreComponents.add(mm.deserialize(line));
-            closeMeta.lore(loreComponents);
-            closeItem.setItemMeta(closeMeta);
-        }
-        gui.setItem(closeSlot, closeItem);
-
-        player.openInventory(gui);
-    }
-
-    private void setupMenuIcon(Inventory gui, Player player, String path, int level, int xp, int nextXp, double health, double damage, double armor, double speed, int blocks, int minutes) {
-        FileConfiguration config = getConfig();
-        if (config.get(path) == null) return;
-
-        int slot = config.getInt(path + ".slot");
-        Material mat = Material.valueOf(config.getString(path + ".material", "STONE").toUpperCase());
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta != null) {
-            String name = config.getString(path + ".name", "");
-            meta.displayName(mm.deserialize(name));
-
-            List<String> rawLore = config.getStringList(path + ".lore");
-            List<Component> loreComponents = new ArrayList<>();
-
-            for (String line : rawLore) {
-                String replaced = line
-                        .replace("%level%", String.valueOf(level))
-                        .replace("%xp%", String.valueOf(xp))
-                        .replace("%next_xp%", level >= 101 ? "MAX" : String.valueOf(nextXp))
-                        .replace("%damage%", String.format("%.1f", damage))
-                        .replace("%health%", String.format("%.1f", health))
-                        .replace("%health_hearts%", String.valueOf((int)(health / 2)))
-                        .replace("%armor%", String.format("%.1f", armor))
-                        .replace("%speed%", String.format("%.3f", speed))
-                        .replace("%blocks_broken%", String.valueOf(blocks))
-                        .replace("%time_online%", String.valueOf(minutes));
-                loreComponents.add(mm.deserialize(replaced));
-            }
-            meta.lore(loreComponents);
-            item.setItemMeta(meta);
-        }
-        gui.setItem(slot, item);
+        dataManager.getPlayerData(event.getPlayer());
+        attributeManager.updateAttributes(event.getPlayer());
+        actionBarManager.updatePlayerActionBar(event.getPlayer());
     }
 
     @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().title().equals(mm.deserialize(menuTitleSerialized))) {
-            event.setCancelled(true);
-            int slot = event.getRawSlot();
-            int closeSlot = getConfig().getInt("menu.close_button.slot", 22);
-            if (slot == closeSlot) {
-                event.getWhoClicked().closeInventory();
+    public void onPlayerExpChange(PlayerExpChangeEvent event) {
+        event.setAmount(0);
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            if (event.getItem() != null && breakthroughManager.isBreakthroughItem(event.getItem())) {
+                event.setCancelled(true);
+                breakthroughManager.performBreakthrough(event.getPlayer());
+                event.getItem().setAmount(event.getItem().getAmount() - 1);
             }
         }
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("schoollevel") && args.length > 0 && args[0].equalsIgnoreCase("reload")) {
-            if (!sender.hasPermission("schoollevel.admin")) {
-                msg(sender, "no-permission");
+    // ==================== COMMANDS ====================
+    public class ProfileCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Only players can use this command!");
                 return true;
             }
-            loadConfigData();
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                updatePlayerAttributes(p);
-                syncVanillaXpBar(p);
-            }
-            msg(sender, "reload");
+            new ProfileGUI((Player) sender).open();
             return true;
         }
+    }
 
-        if (command.getName().equalsIgnoreCase("schoollevel") && args.length > 1 && args[0].equalsIgnoreCase("giveitem")) {
-            if (!sender.hasPermission("schoollevel.admin")) {
-                msg(sender, "no-permission");
+    public class SchoolLevelCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+            if (args.length == 0) {
+                sender.sendMessage(color("&6&lSchoolLevel &7- &fRPG Level System"));
+                sender.sendMessage(color("&e/schoollevel reload &7- &fReload config"));
                 return true;
             }
-            Player target = Bukkit.getPlayer(args[1]);
+            
+            if (args[0].equalsIgnoreCase("reload")) {
+                if (!sender.hasPermission("schoollevel.admin")) {
+                    sender.sendMessage(color("&cYou don't have permission!"));
+                    return true;
+                }
+                
+                reloadConfig();
+                dataManager.reload();
+                xpManager.loadXPConfig();
+                
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    attributeManager.updateAttributes(player);
+                }
+                
+                sender.sendMessage(color("&a✅ Config reloaded successfully!"));
+            }
+            return true;
+        }
+    }
+
+    public class GiveItemCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+            if (args.length < 1) {
+                sender.sendMessage(color("&cUsage: /schoollevel giveitem <player>"));
+                return true;
+            }
+            
+            if (!sender.hasPermission("schoollevel.admin")) {
+                sender.sendMessage(color("&cYou don't have permission!"));
+                return true;
+            }
+            
+            Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sender.sendMessage("❌ Không tìm thấy người chơi có tên " + args[1]);
+                sender.sendMessage(color("&cPlayer not found!"));
                 return true;
             }
-            ItemStack bItem = createBreakthroughItem();
-            target.getInventory().addItem(bItem);
-            sender.sendMessage("🟢 Đã cấp 1 Vật phẩm Đột Phá cho người chơi " + target.getName());
-            target.sendMessage(mm.deserialize(getConfig().getString("messages.prefix") + "<#00ffcc>Bạn nhận được Vật phẩm Đột Phá từ quản trị viên! 🎉"));
+            
+            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
+            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
+            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
             return true;
-        }
-
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("Chỉ có người chơi mới có thể thực hiện lệnh này!");
-            return true;
-        }
-
-        if (command.getName().equalsIgnoreCase("profile") || (args.length > 0 && args[0].equalsIgnoreCase("menu"))) {
-            openProfileMenu(player);
-            return true;
-        }
-
-        PlayerData data = getPlayerData(player.getUniqueId());
-        int nextXp = data.level >= 101 ? 0 : getRequiredXp(data.level);
-        msg(player, "status", 
-                "%level%", String.valueOf(data.level), 
-                "%xp%", String.valueOf(data.xp), 
-                "%next_xp%", String.valueOf(nextXp));
-        return true;
-    }
-
-    public static class PlayerData {
-        public int level;
-        public int xp;
-        public int blocksBroken;
-
-        PlayerData(int level, int xp, int blocksBroken) {
-            this.level = level;
-            this.xp = xp;
-            this.blocksBroken = blocksBroken;
         }
     }
 
-    public static class SchoolLevelPlaceholderExpansion extends me.clip.placeholderapi.expansion.PlaceholderExpansion {
-        private final SchoolLevel plugin;
-        private final MiniMessage mm = MiniMessage.miniMessage();
+    // ==================== GUI ====================
+    public class ProfileGUI {
+        private final Player player;
+        private final Inventory inventory;
+        private final DecimalFormat df = new DecimalFormat("#.##");
 
-        public SchoolLevelPlaceholderExpansion(SchoolLevel plugin) {
-            this.plugin = plugin;
+        public ProfileGUI(Player player) {
+            this.player = player;
+            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh ✦"));
         }
 
-        @Override
-        public String getIdentifier() { return "schoollevel"; }
-        @Override
-        public String getAuthor() { return "AI_Developer"; }
-        @Override
-        public String getVersion() { return "1.0.0"; }
-        @Override
-        public boolean persist() { return true; }
+        public void open() {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            
+            // Fill background
+            ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+            ItemMeta glassMeta = glass.getItemMeta();
+            glassMeta.setDisplayName(" ");
+            glass.setItemMeta(glassMeta);
+            for (int i = 0; i < 54; i++) inventory.setItem(i, glass);
+            
+            // Player head
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta headMeta = (SkullMeta) head.getItemMeta();
+            headMeta.setOwningPlayer(player);
+            headMeta.setDisplayName(color("&6&l" + player.getName()));
+            headMeta.setLore(Arrays.asList(color("&7Thông tin chi tiết của bạn")));
+            head.setItemMeta(headMeta);
+            inventory.setItem(4, head);
+            
+            // Stats
+            double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+            double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
+            double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
+            int level = data.getLevel();
+            double xp = data.getXp();
+            double required = levelManager.getRequiredXP(level);
+            
+            inventory.setItem(20, createInfoItem(Material.EXPERIENCE_BOTTLE,
+                "&6&l⚡ Cấp độ",
+                Arrays.asList("&7Hiện tại: &6" + level, "&7Kinh nghiệm: &b" + df.format(xp) + " &7/ &b" + df.format(required),
+                    "&7Tiến độ: &a" + df.format((xp / required) * 100) + "%")));
+            
+            inventory.setItem(22, createInfoItem(Material.GOLDEN_APPLE,
+                "&c&l❤ Máu tối đa",
+                Arrays.asList("&7Lượng máu: &c" + df.format(health), "&7Trái tim: &c" + df.format(health / 2) + " &c❤")));
+            
+            inventory.setItem(24, createInfoItem(Material.DIAMOND_SWORD,
+                "&6&l⚔ Sát thương",
+                Arrays.asList("&7Sát thương: &6" + df.format(damage))));
+            
+            inventory.setItem(29, createInfoItem(Material.FEATHER,
+                "&b&l✦ Tốc độ",
+                Arrays.asList("&7Tốc độ: &b" + df.format(speed * 1000) + " &b%")));
+            
+            inventory.setItem(31, createInfoItem(Material.DIAMOND_PICKAXE,
+                "&a&l⛏ Block đã đào",
+                Arrays.asList("&7Số block: &a" + data.getBlocksBroken())));
+            
+            int minutes = player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60;
+            inventory.setItem(33, createInfoItem(Material.CLOCK,
+                "&e&l⌛ Thời gian online",
+                Arrays.asList("&7Tổng thời gian: &e" + minutes + " &ephút")));
+            
+            if (data.hasBrokenThrough()) {
+                inventory.setItem(49, createInfoItem(Material.NETHER_STAR,
+                    "&6&l✦ Đã Đột Phá",
+                    Arrays.asList("&7Cấp độ: &6" + level, "&7Trạng thái: &a&l✦ Huyền Thoại ✦")));
+            } else if (level >= 100) {
+                inventory.setItem(49, createInfoItem(Material.RED_STAINED_GLASS_PANE,
+                    "&e&l⚠ Cần Đột Phá",
+                    Arrays.asList("&7Bạn đã đạt &6Cấp 100", "&7Sử dụng &6Đá Đột Phá &7để lên Cấp 101")));
+            }
+            
+            player.openInventory(inventory);
+        }
+
+        private ItemStack createInfoItem(Material material, String name, List<String> lore) {
+            ItemStack item = new ItemStack(material);
+            ItemMeta meta = item.getItemMeta();
+            meta.setDisplayName(color(name));
+            meta.setLore(lore.stream().map(SchoolLevelPlugin.this::color).toList());
+            item.setItemMeta(meta);
+            return item;
+        }
+    }
+
+    // ==================== PLACEHOLDERAPI EXPANSION ====================
+    public class SchoolLevelExpansion extends me.clip.placeholderapi.expansion.PlaceholderExpansion {
+        @Override public String getIdentifier() { return "schoollevel"; }
+        @Override public String getAuthor() { return "SchoolLevel"; }
+        @Override public String getVersion() { return "1.0"; }
 
         @Override
         public String onPlaceholderRequest(Player player, String params) {
             if (player == null) return "";
-            PlayerData data = plugin.getPlayerData(player.getUniqueId());
-
+            
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            DecimalFormat df = new DecimalFormat("#.##");
+            
             switch (params.toLowerCase()) {
-                case "level":
-                    return String.valueOf(data.level);
-                case "level_formatted":
-                    String rawFormat = plugin.getConfig().getString("settings.papi-level-formatted", "⭐ %level%");
-                    return LegacyComponentSerializer.legacySection().serialize(mm.deserialize(rawFormat.replace("%level%", String.valueOf(data.level))));
-                case "xp":
-                    return String.valueOf(data.xp);
-                case "required_xp":
-                    return data.level >= 101 ? "0" : String.valueOf(plugin.getRequiredXp(data.level));
-                case "xp_progress":
-                    return data.level >= 101 ? "MAX" : (data.xp + "/" + plugin.getRequiredXp(data.level));
-                case "blocks_broken":
-                    return String.valueOf(data.blocksBroken);
-                case "minutes_online":
+                case "level": return String.valueOf(data.getLevel());
+                case "level_formatted": return color("&6✦ Cấp " + data.getLevel());
+                case "xp": return df.format(data.getXp());
+                case "required_xp": return df.format(levelManager.getRequiredXP(data.getLevel()));
+                case "xp_progress": return df.format((data.getXp() / levelManager.getRequiredXP(data.getLevel())) * 100);
+                case "blocks_broken": return String.valueOf(data.getBlocksBroken());
+                case "minutes_online": 
                     return String.valueOf(player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60);
+                case "health": 
+                    return df.format(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
                 case "damage":
-                    double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE) != null ? player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue() : 1.0;
-                    return String.format("%.1f", damage);
-                case "health":
-                    double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
-                    return String.format("%.1f", health);
-                case "health_hearts":
-                    double h = player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null ? player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue() : 20.0;
-                    return String.valueOf((int)(h / 2));
+                    return df.format(player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue());
                 case "armor":
-                    double armor = player.getAttribute(Attribute.GENERIC_ARMOR) != null ? player.getAttribute(Attribute.GENERIC_ARMOR).getValue() : 0.0;
-                    return String.format("%.1f", armor);
+                    return df.format(player.getAttribute(Attribute.GENERIC_ARMOR).getValue());
                 case "speed":
-                    double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED) != null ? player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() : 0.1;
-                    return String.format("%.3f", speed);
-                default:
-                    return null;
+                    return df.format(player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * 1000);
+                default: return "";
             }
         }
+    }
+
+    // ==================== UTILITY ====================
+    private String color(String message) {
+        return ChatColor.translateAlternateColorCodes('&', message);
     }
 }
