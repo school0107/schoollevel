@@ -1,10 +1,10 @@
-# plugin.yml
 name: SchoolLevel
-version: 1.0
+version: ${project.version}
 main: com.schoollevel.SchoolLevelPlugin
 api-version: "1.21"
 author: SchoolLevel
-description: RPG Level System with Breakthrough
+description: RPG Level System with Breakthrough for Minecraft 1.21+
+website: https://github.com/yourusername/SchoolLevel
 
 commands:
   profile:
