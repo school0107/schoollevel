@@ -1,10 +1,9 @@
 name: SchoolLevel
 version: ${project.version}
-main: com.schoollevel.SchoolLevelPlugin
+main: me.schoollevel.schoollevel.SchoolLevelPlugin
 api-version: "1.21"
 author: SchoolLevel
 description: RPG Level System with Breakthrough for Minecraft 1.21+
-website: https://github.com/yourusername/SchoolLevel
 
 commands:
   profile:
