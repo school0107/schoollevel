@@ -764,4 +764,135 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 return true;
             }
             target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
-            sender.sendMessage(color("&
+            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
+            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
+            return true;
+        }
+    }
+
+    public class GiveItemCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+            if (args.length < 1) {
+                sender.sendMessage(color("&cUsage: /schoollevelgiveitem <player>"));
+                return true;
+            }
+            if (!sender.hasPermission("schoollevel.admin")) {
+                sender.sendMessage(color("&cYou don't have permission!"));
+                return true;
+            }
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null) {
+                sender.sendMessage(color("&cPlayer not found!"));
+                return true;
+            }
+            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
+            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
+            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
+            return true;
+        }
+    }
+
+    public class ProfileGUI {
+        private final Player player;
+        private final Inventory inventory;
+
+        public ProfileGUI(Player player) {
+            this.player = player;
+            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh ✦"));
+        }
+
+        public void open() {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+
+            ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+            ItemMeta glassMeta = glass.getItemMeta();
+            glassMeta.setDisplayName(" ");
+            glass.setItemMeta(glassMeta);
+            for (int i = 0; i < 54; i++) inventory.setItem(i, glass);
+
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta headMeta = (SkullMeta) head.getItemMeta();
+            headMeta.setOwningPlayer(player);
+            headMeta.setDisplayName(color("&6&l" + player.getName()));
+            headMeta.setLore(Arrays.asList(color("&7Thông tin chi tiết của bạn")));
+            head.setItemMeta(headMeta);
+            inventory.setItem(4, head);
+
+            double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+            double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
+            double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
+            int level = data.getLevel();
+            double xp = data.getXp();
+            double required = levelManager.getRequiredXP(level);
+            double money = data.getMoney();
+
+            inventory.setItem(20, createInfoItem(Material.EXPERIENCE_BOTTLE,
+                "&6&l⚡ Cấp độ",
+                Arrays.asList(
+                    "&7Hiện tại: &6" + level,
+                    "&7Kinh nghiệm: &b" + DF.format(xp) + " &7/ &b" + DF.format(required),
+                    "&7Tiến độ: &a" + DF.format((xp / required) * 100) + "%"
+                )));
+
+            inventory.setItem(22, createInfoItem(Material.GOLDEN_APPLE,
+                "&c&l❤ Máu tối đa",
+                Arrays.asList(
+                    "&7Lượng máu: &c" + DF.format(health),
+                    "&7Trái tim: &c" + DF.format(health / 2) + " &c❤"
+                )));
+
+            inventory.setItem(24, createInfoItem(Material.DIAMOND_SWORD,
+                "&6&l⚔ Sát thương",
+                Arrays.asList("&7Sát thương: &6" + DF.format(damage))));
+
+            inventory.setItem(29, createInfoItem(Material.FEATHER,
+                "&b&l✦ Tốc độ",
+                Arrays.asList("&7Tốc độ: &b" + DF.format(speed * 1000) + " &b%")));
+
+            inventory.setItem(31, createInfoItem(Material.DIAMOND_PICKAXE,
+                "&a&l⛏ Block đã đào",
+                Arrays.asList("&7Số block: &a" + data.getBlocksBroken())));
+
+            inventory.setItem(33, createInfoItem(Material.GOLD_INGOT,
+                "&e&l💰 Coins",
+                Arrays.asList("&7Số coins: &e" + DF_MONEY.format(money))));
+
+            int minutes = player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60;
+            inventory.setItem(40, createInfoItem(Material.CLOCK,
+                "&e&l⌛ Thời gian online",
+                Arrays.asList("&7Tổng thời gian: &e" + minutes + " &ephút")));
+
+            if (data.hasBrokenThrough()) {
+                inventory.setItem(49, createInfoItem(Material.NETHER_STAR,
+                    "&6&l✦ Đã Đột Phá",
+                    Arrays.asList(
+                        "&7Cấp độ: &6" + level,
+                        "&7Trạng thái: &a&l✦ Huyền Thoại ✦"
+                    )));
+            } else if (level >= 100) {
+                inventory.setItem(49, createInfoItem(Material.RED_STAINED_GLASS_PANE,
+                    "&e&l⚠ Cần Đột Phá",
+                    Arrays.asList(
+                        "&7Bạn đã đạt &6Cấp 100",
+                        "&7Sử dụng &6Đá Đột Phá &7để lên Cấp 101"
+                    )));
+            }
+
+            player.openInventory(inventory);
+        }
+
+        private ItemStack createInfoItem(Material material, String name, List<String> lore) {
+            ItemStack item = new ItemStack(material);
+            ItemMeta meta = item.getItemMeta();
+            meta.setDisplayName(color(name));
+            meta.setLore(lore.stream().map(this::color).toList());
+            item.setItemMeta(meta);
+            return item;
+        }
+
+        private String color(String message) {
+            return ChatColor.translateAlternateColorCodes('&', message);
+        }
+    }
+}
