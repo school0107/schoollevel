@@ -1,4 +1,3 @@
-// SchoolLevelPlugin.java - File duy nhất cho toàn bộ plugin
 package com.schoollevel;
 
 import net.kyori.adventure.text.Component;
@@ -114,7 +113,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public DataManager() {
             this.dataFile = new File(SchoolLevelPlugin.this.getDataFolder(), "data.yml");
-            if (!dataFile.exists()) saveResource("data.yml", false);
+            if (!dataFile.exists()) SchoolLevelPlugin.this.saveResource("data.yml", false);
             this.dataConfig = YamlConfiguration.loadConfiguration(dataFile);
             loadAllData();
         }
@@ -151,14 +150,17 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         private void loadAllData() {
+            if (dataConfig.getKeys(false).isEmpty()) return;
             for (String uuidStr : dataConfig.getKeys(false)) {
-                UUID uuid = UUID.fromString(uuidStr);
-                PlayerData data = new PlayerData(uuid);
-                data.setLevel(dataConfig.getInt(uuidStr + ".level", 1));
-                data.setXp(dataConfig.getDouble(uuidStr + ".xp", 0));
-                data.setBlocksBroken(dataConfig.getInt(uuidStr + ".blocksBroken", 0));
-                data.setHasBrokenThrough(dataConfig.getBoolean(uuidStr + ".hasBrokenThrough", false));
-                playerDataMap.put(uuid, data);
+                try {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    PlayerData data = new PlayerData(uuid);
+                    data.setLevel(dataConfig.getInt(uuidStr + ".level", 1));
+                    data.setXp(dataConfig.getDouble(uuidStr + ".xp", 0));
+                    data.setBlocksBroken(dataConfig.getInt(uuidStr + ".blocksBroken", 0));
+                    data.setHasBrokenThrough(dataConfig.getBoolean(uuidStr + ".hasBrokenThrough", false));
+                    playerDataMap.put(uuid, data);
+                } catch (IllegalArgumentException ignored) {}
             }
         }
 
@@ -231,8 +233,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             attributeManager.updateAttributes(player);
             
-            String message = getConfig().getString("messages.level-up", "&6&l⬆ &fBạn đã lên &6Cấp %level%&f!")
-                    .replace("%level%", String.valueOf(newLevel));
+            String message = getConfig().getString("messages.level-up", 
+                "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦")
+                .replace("%level%", String.valueOf(newLevel));
             player.sendMessage(color(message));
             
             for (String cmd : getConfig().getStringList("commands.level-up")) {
@@ -282,17 +285,24 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public void loadXPConfig() {
             blockXP.clear();
-            for (String key : getConfig().getConfigurationSection("xp.blocks").getKeys(false)) {
-                Material mat = Material.getMaterial(key.toUpperCase());
-                if (mat != null) blockXP.put(mat, getConfig().getDouble("xp.blocks." + key));
+            FileConfiguration config = getConfig();
+            if (config.contains("xp.blocks")) {
+                for (String key : config.getConfigurationSection("xp.blocks").getKeys(false)) {
+                    try {
+                        Material mat = Material.getMaterial(key.toUpperCase());
+                        if (mat != null) blockXP.put(mat, config.getDouble("xp.blocks." + key));
+                    } catch (Exception ignored) {}
+                }
             }
             
             mobXP.clear();
-            for (String key : getConfig().getConfigurationSection("xp.mobs").getKeys(false)) {
-                try {
-                    EntityType type = EntityType.valueOf(key.toUpperCase());
-                    mobXP.put(type, getConfig().getDouble("xp.mobs." + key));
-                } catch (IllegalArgumentException ignored) {}
+            if (config.contains("xp.mobs")) {
+                for (String key : config.getConfigurationSection("xp.mobs").getKeys(false)) {
+                    try {
+                        EntityType type = EntityType.valueOf(key.toUpperCase());
+                        mobXP.put(type, config.getDouble("xp.mobs." + key));
+                    } catch (IllegalArgumentException ignored) {}
+                }
             }
         }
 
