@@ -33,6 +33,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.Statistic;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.UUID;
@@ -55,9 +56,15 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         instance = this;
         
+        // Save default config
         saveDefaultConfig();
-        reloadConfig();
         
+        // Create data folder if not exists
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdirs();
+        }
+        
+        // Initialize managers
         dataManager = new DataManager();
         levelManager = new LevelManager();
         attributeManager = new AttributeManager();
@@ -65,17 +72,21 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         breakthroughManager = new BreakthroughManager();
         actionBarManager = new ActionBarManager();
         
+        // Register commands
         Objects.requireNonNull(getCommand("profile")).setExecutor(new ProfileCommand());
         Objects.requireNonNull(getCommand("schoollevel")).setExecutor(new SchoolLevelCommand());
         Objects.requireNonNull(getCommand("schoollevelgiveitem")).setExecutor(new GiveItemCommand());
         
+        // Register events
         getServer().getPluginManager().registerEvents(this, this);
         
+        // Register PlaceholderAPI
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new SchoolLevelExpansion().register();
             getLogger().info("✅ PlaceholderAPI registered!");
         }
         
+        // Action bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -108,8 +119,23 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public DataManager() {
             this.dataFile = new File(SchoolLevelPlugin.this.getDataFolder(), "data.yml");
-            if (!dataFile.exists()) SchoolLevelPlugin.this.saveResource("data.yml", false);
-            this.dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+            
+            // Tạo file nếu chưa tồn tại
+            if (!dataFile.exists()) {
+                try {
+                    dataFile.createNewFile();
+                    dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+                    // Tạo cấu trúc rỗng
+                    dataConfig.save(dataFile);
+                    getLogger().info("Created new data.yml file");
+                } catch (IOException e) {
+                    getLogger().severe("Could not create data.yml: " + e.getMessage());
+                    dataConfig = new YamlConfiguration();
+                }
+            } else {
+                dataConfig = YamlConfiguration.loadConfiguration(dataFile);
+            }
+            
             loadAllData();
         }
 
@@ -145,7 +171,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         private void loadAllData() {
-            if (dataConfig.getKeys(false).isEmpty()) return;
+            if (dataConfig == null || dataConfig.getKeys(false).isEmpty()) return;
+            
             for (String uuidStr : dataConfig.getKeys(false)) {
                 try {
                     UUID uuid = UUID.fromString(uuidStr);
@@ -160,7 +187,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         private void saveData() {
-            try { dataConfig.save(dataFile); } catch (Exception e) { e.printStackTrace(); }
+            try { 
+                dataConfig.save(dataFile); 
+            } catch (Exception e) { 
+                e.printStackTrace(); 
+            }
         }
 
         public void reload() {
