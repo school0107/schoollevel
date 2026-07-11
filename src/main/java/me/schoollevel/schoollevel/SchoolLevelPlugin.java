@@ -193,15 +193,17 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             if (config.contains("permission-multipliers.xp")) {
                 for (String key : config.getConfigurationSection("permission-multipliers.xp").getKeys(false)) {
-                    xpMultipliers.put(key, config.getDouble("permission-multipliers.xp." + key));
-                    getLogger().info("Loaded XP permission: " + key + " = " + config.getDouble("permission-multipliers.xp." + key));
+                    double value = config.getDouble("permission-multipliers.xp." + key);
+                    xpMultipliers.put(key, value);
+                    getLogger().info("✅ Loaded XP permission: " + key + " = " + value);
                 }
             }
             
             if (config.contains("permission-multipliers.money")) {
                 for (String key : config.getConfigurationSection("permission-multipliers.money").getKeys(false)) {
-                    moneyMultipliers.put(key, config.getDouble("permission-multipliers.money." + key));
-                    getLogger().info("Loaded Money permission: " + key + " = " + config.getDouble("permission-multipliers.money." + key));
+                    double value = config.getDouble("permission-multipliers.money." + key);
+                    moneyMultipliers.put(key, value);
+                    getLogger().info("✅ Loaded Money permission: " + key + " = " + value);
                 }
             }
         }
@@ -211,6 +213,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             for (Map.Entry<String, Double> entry : xpMultipliers.entrySet()) {
                 if (player.hasPermission(entry.getKey()) && entry.getValue() > highest) {
                     highest = entry.getValue();
+                    getLogger().info("🔍 Player " + player.getName() + " has XP permission " + entry.getKey() + " = " + entry.getValue());
                 }
             }
             return highest;
@@ -221,6 +224,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             for (Map.Entry<String, Double> entry : moneyMultipliers.entrySet()) {
                 if (player.hasPermission(entry.getKey()) && entry.getValue() > highest) {
                     highest = entry.getValue();
+                    getLogger().info("🔍 Player " + player.getName() + " has Money permission " + entry.getKey() + " = " + entry.getValue());
                 }
             }
             return highest;
