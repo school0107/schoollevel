@@ -907,4 +907,4 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh ✦"));
         }
 
-       
+        public void
