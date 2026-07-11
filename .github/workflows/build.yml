@@ -16,6 +16,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # ← THÊM DÒNG NÀY
+      packages: write   # ← THÊM DÒNG NÀY
     
     steps:
     - name: Checkout code
@@ -55,8 +58,6 @@ jobs:
         prerelease: false
         files: |
           target/*.jar
-          target/*.jar.md5
-          target/*.jar.sha1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
@@ -70,7 +71,5 @@ jobs:
         prerelease: false
         files: |
           target/*.jar
-          target/*.jar.md5
-          target/*.jar.sha1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
