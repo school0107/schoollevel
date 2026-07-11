@@ -1,5 +1,7 @@
 package me.schoollevel.schoollevel;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -171,8 +173,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         return ChatColor.translateAlternateColorCodes('&', message);
     }
 
-    // ==================== INNER CLASSES ====================
-    
     public class ConfigManager {
         private final Map<Material, Double> blockXP = new ConcurrentHashMap<>();
         private final Map<EntityType, Double> mobXP = new ConcurrentHashMap<>();
@@ -431,10 +431,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             title = color(title);
             subtitle = color(subtitle.replace("%level%", String.valueOf(newLevel)));
 
-            player.showTitle(net.kyori.adventure.title.Title.title(
-                net.kyori.adventure.text.Component.text(title),
-                net.kyori.adventure.text.Component.text(subtitle),
-                net.kyori.adventure.title.Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(2000), Duration.ofMillis(500))
+            player.showTitle(Title.title(
+                Component.text(title),
+                Component.text(subtitle),
+                Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(2000), Duration.ofMillis(500))
             ));
 
             String message = getConfig().getString("messages.level-up-chat",
@@ -600,7 +600,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double money = configManager.useVaultEconomy() ? economy.getBalance(player) : data.getMoney();
 
             String actionBarText = buildActionBarText(player, level, bar, xp, required, health, damage, money);
-            player.sendActionBar(net.kyori.adventure.text.Component.text(color(actionBarText)));
+            player.sendActionBar(Component.text(color(actionBarText)));
 
             if (data.getMoneyMessageTicks() > 0) {
                 data.setMoneyMessageTicks(data.getMoneyMessageTicks() - 1);
@@ -890,9 +890,42 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             item.setItemMeta(meta);
             return item;
         }
+    }
 
-        private String color(String message) {
-            return ChatColor.translateAlternateColorCodes('&', message);
+    public class SchoolLevelExpansion extends me.clip.placeholderapi.expansion.PlaceholderExpansion {
+        @Override public String getIdentifier() { return "schoollevel"; }
+        @Override public String getAuthor() { return "SchoolLevel"; }
+        @Override public String getVersion() { return "1.0"; }
+
+        @Override
+        public String onPlaceholderRequest(Player player, String params) {
+            if (player == null) return "";
+            
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            
+            switch (params.toLowerCase()) {
+                case "level": return String.valueOf(data.getLevel());
+                case "level_formatted": return color("&6✦ Cấp " + data.getLevel());
+                case "xp": return DF.format(data.getXp());
+                case "required_xp": return DF.format(levelManager.getRequiredXP(data.getLevel()));
+                case "xp_progress": return DF.format((data.getXp() / levelManager.getRequiredXP(data.getLevel())) * 100);
+                case "blocks_broken": return String.valueOf(data.getBlocksBroken());
+                case "minutes_online": 
+                    return String.valueOf(player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60);
+                case "health": 
+                    return DF.format(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+                case "damage":
+                    return DF.format(player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue());
+                case "armor":
+                    return DF.format(player.getAttribute(Attribute.GENERIC_ARMOR).getValue());
+                case "speed":
+                    return DF.format(player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * 1000);
+                case "money":
+                    return DF_MONEY.format(data.getMoney());
+                case "money_formatted":
+                    return color("&e$" + DF_MONEY.format(data.getMoney()));
+                default: return "";
+            }
         }
     }
 }
