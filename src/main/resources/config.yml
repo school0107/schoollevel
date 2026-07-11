@@ -1,10 +1,15 @@
 # ======================================================
-#        ✨ SCHOOLLEVEL PLUGIN CONFIG ✨
-#          RPG Level System v1.0 - 1.21+
+#              ✨ SCHOOLLEVEL PLUGIN CONFIG ✨
+#                 RPG Level System v1.0
 # ======================================================
 
 # ==================== SETTINGS ====================
 settings:
+  # ===== KINH NGHIỆM =====
+  # Hệ số nhân XP mỗi cấp (mặc định 1.1 = tăng 10% mỗi cấp)
+  # Công thức: 100 * level^1.5 * multiplier^level
+  level-xp-multiplier: 1.1
+  
   # ===== TIỀN TỆ =====
   currency:
     # Ký hiệu tiền tệ (có thể dùng emoji)
@@ -45,8 +50,7 @@ settings:
   # {health}   - Máu hiện tại
   # {damage}   - Sát thương hiện tại
   # {money}    - Số tiền hiện tại
-  # {pending}  - Tiền vừa nhận được (hiển thị khi có)
-  actionbar-format: "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}{pending}"
+  actionbar-format: "&e⚡ &fCấp &6{level} &7| &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} "
 
 # ==================== XP CONFIGURATION ====================
 xp:
@@ -148,7 +152,7 @@ money:
   # Nếu không có trong danh sách này, sẽ dùng base-block-money
   # Có thể ghi đè cho từng loại block riêng
   blocks:
-    oak_log: 0.1
+    # 🟡 Quặng quý hiếm
 
   # 💰 TIỀN NHẬN ĐƯỢC KHI GIẾT MOB
   mobs:
@@ -192,6 +196,32 @@ money:
     breeze: 12.0
     bogged: 4.0
 
+# ==================== PERMISSION MULTIPLIERS ====================
+permission-multipliers:
+  # XP Multipliers - Người chơi có quyền sẽ nhân XP khi đào block/giết mob
+  # Sẽ lấy số nhân cao nhất nếu có nhiều permission
+  xp:
+    "schoollevel.xp.1.5": 1.5
+    "schoollevel.xp.2.0": 2.0
+    "schoollevel.xp.2.5": 2.5
+    "schoollevel.xp.3.0": 3.0
+    "schoollevel.xp.3.5": 3.5
+    "schoollevel.xp.4.0": 4.0
+    "schoollevel.xp.4.5": 4.5
+    "schoollevel.xp.5.0": 5.0
+    "schoollevel.xp.5.5": 5.5
+  
+  # Money Multipliers - Người chơi có quyền sẽ nhân Money khi đào block/giết mob
+  # Sẽ lấy số nhân cao nhất nếu có nhiều permission
+  money:
+    "schoollevel.money.1.5": 1.5
+    "schoollevel.money.2.0": 2.0
+    "schoollevel.money.2.5": 2.5
+    "schoollevel.money.3.0": 3.0
+    "schoollevel.money.3.5": 3.5
+    "schoollevel.money.4.0": 4.0
+    "schoollevel.money.4.5": 4.5
+
 # ==================== BREAKTHROUGH ====================
 breakthrough:
   # 💰 Số tiền thưởng khi đột phá
@@ -200,7 +230,6 @@ breakthrough:
 # ==================== MESSAGES ====================
 messages:
   # 📨 Tin nhắn khi lên cấp (CHAT)
-  # Có thể dùng màu HEX: &#FF6B00
   level-up-chat: "&6&l⬆ &fBạn đã lên &6&lCấp %level%&f! &e✦"
   
   # 🎯 Tin nhắn khi lên cấp (TITLE)
@@ -219,17 +248,12 @@ messages:
 
 # ==================== COMMANDS ====================
 commands:
-  # 📋 Lệnh chạy khi lên cấp
-  level-up:
-    - "say &6&l✦ &f%player% &eđã lên cấp &6&l%level%&e! 🎉 Chúc mừng!"
-    - "effect give %player% minecraft:glowing 3 1"
-    - "effect give %player% minecraft:regeneration 5 1"
+  # 📋 Lệnh chạy khi lên cấp (Để trống nếu không muốn chạy)
+  level-up: []
     
   # 📋 Lệnh chạy khi đột phá
   breakthrough:
     - "say &6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ GIỚI HẠN! &fCấp 101 HUYỀN THOẠI! ✨"
-    - "title %player% title &6&l✦ HUYỀN THOẠI ✦"
-    - "title %player% subtitle &eCấp 101 - Sức mạnh vô hạn"
     - "effect give %player% minecraft:strength 60 2"
     - "effect give %player% minecraft:resistance 60 2"
     - "effect give %player% minecraft:speed 60 2"
