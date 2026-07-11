@@ -195,7 +195,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 for (String key : config.getConfigurationSection("permission-multipliers.xp").getKeys(false)) {
                     double value = config.getDouble("permission-multipliers.xp." + key);
                     xpMultipliers.put(key, value);
-                    getLogger().info("✅ Loaded XP permission: " + key + " = " + value);
+                    getLogger().info("✅ Loaded XP: " + key + " = " + value + "x");
                 }
             }
             
@@ -203,7 +203,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 for (String key : config.getConfigurationSection("permission-multipliers.money").getKeys(false)) {
                     double value = config.getDouble("permission-multipliers.money." + key);
                     moneyMultipliers.put(key, value);
-                    getLogger().info("✅ Loaded Money permission: " + key + " = " + value);
+                    getLogger().info("✅ Loaded Money: " + key + " = " + value + "x");
                 }
             }
         }
@@ -211,9 +211,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         public double getXPMultiplier(Player player) {
             double highest = 1.0;
             for (Map.Entry<String, Double> entry : xpMultipliers.entrySet()) {
-                if (player.hasPermission(entry.getKey()) && entry.getValue() > highest) {
-                    highest = entry.getValue();
-                    getLogger().info("🔍 Player " + player.getName() + " has XP permission " + entry.getKey() + " = " + entry.getValue());
+                if (player.hasPermission(entry.getKey())) {
+                    getLogger().info("🔍 " + player.getName() + " has " + entry.getKey() + " = " + entry.getValue() + "x");
+                    if (entry.getValue() > highest) {
+                        highest = entry.getValue();
+                    }
                 }
             }
             return highest;
@@ -222,9 +224,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         public double getMoneyMultiplier(Player player) {
             double highest = 1.0;
             for (Map.Entry<String, Double> entry : moneyMultipliers.entrySet()) {
-                if (player.hasPermission(entry.getKey()) && entry.getValue() > highest) {
-                    highest = entry.getValue();
-                    getLogger().info("🔍 Player " + player.getName() + " has Money permission " + entry.getKey() + " = " + entry.getValue());
+                if (player.hasPermission(entry.getKey())) {
+                    getLogger().info("🔍 " + player.getName() + " has " + entry.getKey() + " = " + entry.getValue() + "x");
+                    if (entry.getValue() > highest) {
+                        highest = entry.getValue();
+                    }
                 }
             }
             return highest;

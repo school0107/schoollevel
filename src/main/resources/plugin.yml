@@ -26,54 +26,28 @@ permissions:
     description: 👑 Admin permissions
     default: op
   
-  # ===== XP MULTIPLIERS =====
-  schoollevel.xp.1.5:
-    description: 1.5x XP khi đào block và giết mob
+  schoollevel.xp.2:
+    description: 2x XP khi đào block và giết mob
     default: false
-  schoollevel.xp.2.0:
-    description: 2.0x XP khi đào block và giết mob
+  schoollevel.xp.3:
+    description: 3x XP khi đào block và giết mob
     default: false
-  schoollevel.xp.2.5:
-    description: 2.5x XP khi đào block và giết mob
+  schoollevel.xp.4:
+    description: 4x XP khi đào block và giết mob
     default: false
-  schoollevel.xp.3.0:
-    description: 3.0x XP khi đào block và giết mob
-    default: false
-  schoollevel.xp.3.5:
-    description: 3.5x XP khi đào block và giết mob
-    default: false
-  schoollevel.xp.4.0:
-    description: 4.0x XP khi đào block và giết mob
-    default: false
-  schoollevel.xp.4.5:
-    description: 4.5x XP khi đào block và giết mob
-    default: false
-  schoollevel.xp.5.0:
-    description: 5.0x XP khi đào block và giết mob
-    default: false
-  schoollevel.xp.5.5:
-    description: 5.5x XP khi đào block và giết mob
+  schoollevel.xp.5:
+    description: 5x XP khi đào block và giết mob
     default: false
   
-  # ===== MONEY MULTIPLIERS =====
-  schoollevel.money.1.5:
-    description: 1.5x Money khi đào block và giết mob
+  schoollevel.money.2:
+    description: 2x Money khi đào block và giết mob
     default: false
-  schoollevel.money.2.0:
-    description: 2.0x Money khi đào block và giết mob
+  schoollevel.money.3:
+    description: 3x Money khi đào block và giết mob
     default: false
-  schoollevel.money.2.5:
-    description: 2.5x Money khi đào block và giết mob
+  schoollevel.money.4:
+    description: 4x Money khi đào block và giết mob
     default: false
-  schoollevel.money.3.0:
-    description: 3.0x Money khi đào block và giết mob
-    default: false
-  schoollevel.money.3.5:
-    description: 3.5x Money khi đào block và giết mob
-    default: false
-  schoollevel.money.4.0:
-    description: 4.0x Money khi đào block và giết mob
-    default: false
-  schoollevel.money.4.5:
-    description: 4.5x Money khi đào block và giết mob
+  schoollevel.money.5:
+    description: 5x Money khi đào block và giết mob
     default: false
