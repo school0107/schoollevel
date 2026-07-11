@@ -903,4 +903,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 inventory.setItem(i, glass);
             }
             
-            ItemStack head = new
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta headMeta = (SkullMeta) head.getItemMeta();
+            headMeta.setOwningPlayer(player);
+            headMeta.setDisplayName(color("&6&l" + player.getName()));
+            headMeta.setLore(Arrays.asList(color("&7Thông
