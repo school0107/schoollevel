@@ -45,8 +45,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     // ==================== CONSTANTS ====================
     private static final int MAX_LEVEL = 100;
     private static final int LEGENDARY_LEVEL = 101;
-    private static final int XP_BAR_UPDATE_INTERVAL = 20; // ticks (1 second)
-    private static final int ACTION_BAR_INTERVAL = 20; // ticks (1 second)
+    private static final int XP_BAR_UPDATE_INTERVAL = 20;
+    private static final int ACTION_BAR_INTERVAL = 20;
     private static final DecimalFormat DF = new DecimalFormat("#.##");
     private static final DecimalFormat DF_MONEY = new DecimalFormat("#.00");
 
@@ -69,16 +69,13 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         long startTime = System.currentTimeMillis();
         instance = this;
         
-        // Load config
         saveDefaultConfig();
         configManager = new ConfigManager();
         
-        // Initialize data folder
         if (!getDataFolder().exists()) {
             getDataFolder().mkdirs();
         }
         
-        // Initialize managers
         dataManager = new DataManager();
         levelManager = new LevelManager();
         attributeManager = new AttributeManager();
@@ -87,16 +84,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         actionBarManager = new ActionBarManager();
         moneyManager = new MoneyManager();
         
-        // Register commands
         registerCommands();
-        
-        // Register events
         getServer().getPluginManager().registerEvents(this, this);
-        
-        // Register PlaceholderAPI
         registerPlaceholderAPI();
-        
-        // Start scheduled tasks
         startScheduledTasks();
         
         getLogger().info("§a✅ SchoolLevel Plugin enabled! (Took " + (System.currentTimeMillis() - startTime) + "ms)");
@@ -114,7 +104,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         Objects.requireNonNull(getCommand("profile")).setExecutor(new ProfileCommand());
         Objects.requireNonNull(getCommand("schoollevel")).setExecutor(new SchoolLevelCommand());
         Objects.requireNonNull(getCommand("schoollevelgiveitem")).setExecutor(new GiveItemCommand());
-        Objects.requireNonNull(getCommand("schoollevelmoney")).setExecutor(new MoneyCommand());
     }
 
     private void registerPlaceholderAPI() {
@@ -125,7 +114,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     }
 
     private void startScheduledTasks() {
-        // Action bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -135,7 +123,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
         }.runTaskTimer(this, 0, ACTION_BAR_INTERVAL);
         
-        // XP bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -146,7 +133,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }.runTaskTimer(this, 0, XP_BAR_UPDATE_INTERVAL);
     }
 
-    // ==================== UPDATE VANILLA XP BAR ====================
     private void updateVanillaXPBar(Player player) {
         DataManager.PlayerData data = dataManager.getPlayerData(player);
         int level = data.getLevel();
@@ -398,18 +384,15 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             attributeManager.updateAttributes(player);
             
-            // Send level up message
             String message = getConfig().getString("messages.level-up", 
                 "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦")
                 .replace("%level%", String.valueOf(newLevel));
             player.sendMessage(color(message));
             
-            // Bonus money on level up
             double bonusMoney = newLevel * 10.0;
             moneyManager.addMoney(player, bonusMoney);
             player.sendMessage(color("&e&l💰 &fBạn nhận được &6" + DF.format(bonusMoney) + " &fcoins!"));
             
-            // Execute commands
             for (String cmd : getConfig().getStringList("commands.level-up")) {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
                     cmd.replace("%player%", player.getName()).replace("%level%", String.valueOf(newLevel)));
@@ -437,12 +420,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             AttributeInstance instance = player.getAttribute(attribute);
             if (instance == null) return;
             
-            // Remove old modifier
             instance.getModifiers().stream()
                 .filter(mod -> mod.getKey() != null && mod.getKey().getKey().equals(modifierName))
                 .forEach(instance::removeModifier);
             
-            // Add new modifier if valid
             if (amount > 0.001) {
                 NamespacedKey key = new NamespacedKey(SchoolLevelPlugin.this, modifierName);
                 instance.addModifier(new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_NUMBER));
@@ -459,11 +440,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 DataManager.PlayerData data = dataManager.getPlayerData(player);
                 data.incrementBlocksBroken();
                 
-                // Add money for block break
                 double moneyEarned = moneyManager.getBlockMoney(player);
                 moneyManager.addMoney(player, moneyEarned);
                 
-                // Show money message
                 if (configManager.showMoneyMessage()) {
                     player.sendActionBar(Component.text(
                         color("&e💰 +" + DF.format(moneyEarned) + " coins")
@@ -476,7 +455,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double xp = configManager.getMobXP(entityType);
             if (xp > 0) {
                 levelManager.addXP(player, xp);
-                // Bonus money for mob kill
                 moneyManager.addMoney(player, xp * 0.5);
             }
         }
@@ -523,23 +501,19 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
             
-            // Bonus money for breakthrough
             moneyManager.addMoney(player, 10000);
             player.sendMessage(color("&6&l💰 &fBạn nhận được &610,000 &fcoins khi đột phá!"));
             
-            // Broadcast
             String broadcast = getConfig().getString("messages.breakthrough", 
                 "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! ✦")
                 .replace("%player%", player.getName());
             Bukkit.broadcastMessage(color(broadcast));
             
-            // Execute commands
             for (String cmd : getConfig().getStringList("commands.breakthrough")) {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
                     cmd.replace("%player%", player.getName()));
             }
             
-            // Visual effects
             player.getWorld().strikeLightningEffect(player.getLocation());
             for (int i = 0; i < 20; i++) {
                 player.getWorld().spawnParticle(org.bukkit.Particle.FLAME, 
@@ -638,21 +612,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    public class MoneyCommand implements CommandExecutor {
-        @Override
-        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-            if (!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command!");
-                return true;
-            }
-            
-            Player player = (Player) sender;
-            double money = moneyManager.getMoney(player);
-            player.sendMessage(color("&e&l💰 &fSố coins của bạn: &6" + DF_MONEY.format(money)));
-            return true;
-        }
-    }
-
     public class SchoolLevelCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
@@ -664,10 +623,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             switch (args[0].toLowerCase()) {
                 case "reload":
                     return handleReload(sender);
-                case "money":
-                    return handleMoney(sender);
                 case "givecoins":
                     return handleGiveCoins(sender, args);
+                case "giveitem":
+                    return handleGiveItem(sender, args);
                 default:
                     sendHelp(sender);
                     return true;
@@ -677,9 +636,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private void sendHelp(CommandSender sender) {
             sender.sendMessage(color("&6&lSchoolLevel &7- &fRPG Level System"));
             sender.sendMessage(color("&e/schoollevel reload &7- &fReload config"));
-            sender.sendMessage(color("&e/schoollevel money &7- &fView your money"));
             sender.sendMessage(color("&e/schoollevel giveitem <player> &7- &fGive breakthrough item"));
             sender.sendMessage(color("&e/schoollevel givecoins <player> <amount> &7- &fGive coins"));
+            sender.sendMessage(color("&e/profile &7- &fOpen profile menu"));
         }
 
         private boolean handleReload(CommandSender sender) {
@@ -697,16 +656,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
             
             sender.sendMessage(color("&a✅ Config reloaded successfully!"));
-            return true;
-        }
-
-        private boolean handleMoney(CommandSender sender) {
-            if (!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command!");
-                return true;
-            }
-            Player player = (Player) sender;
-            player.sendMessage(color("&e&l💰 &fSố coins của bạn: &6" + DF_MONEY.format(moneyManager.getMoney(player))));
             return true;
         }
 
@@ -737,13 +686,36 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
             return true;
         }
+
+        private boolean handleGiveItem(CommandSender sender, String[] args) {
+            if (!sender.hasPermission("schoollevel.admin")) {
+                sender.sendMessage(color("&cYou don't have permission!"));
+                return true;
+            }
+            
+            if (args.length < 2) {
+                sender.sendMessage(color("&cUsage: /schoollevel giveitem <player>"));
+                return true;
+            }
+            
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage(color("&cPlayer not found!"));
+                return true;
+            }
+            
+            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
+            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
+            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
+            return true;
+        }
     }
 
     public class GiveItemCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
             if (args.length < 1) {
-                sender.sendMessage(color("&cUsage: /schoollevel giveitem <player>"));
+                sender.sendMessage(color("&cUsage: /schoollevelgiveitem <player>"));
                 return true;
             }
             
@@ -778,14 +750,12 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         public void open() {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             
-            // Fill background
             ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
             ItemMeta glassMeta = glass.getItemMeta();
             glassMeta.setDisplayName(" ");
             glass.setItemMeta(glassMeta);
             for (int i = 0; i < 54; i++) inventory.setItem(i, glass);
             
-            // Player head
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta headMeta = (SkullMeta) head.getItemMeta();
             headMeta.setOwningPlayer(player);
@@ -794,7 +764,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             head.setItemMeta(headMeta);
             inventory.setItem(4, head);
             
-            // Stats
             double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
             double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
             double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
@@ -880,4 +849,24 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 case "minutes_online": 
                     return String.valueOf(player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60);
                 case "health": 
-                    return DF.format(player.getAttribute(Attribute.GENERIC
+                    return DF.format(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+                case "damage":
+                    return DF.format(player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue());
+                case "armor":
+                    return DF.format(player.getAttribute(Attribute.GENERIC_ARMOR).getValue());
+                case "speed":
+                    return DF.format(player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * 1000);
+                case "money":
+                    return DF_MONEY.format(data.getMoney());
+                case "money_formatted":
+                    return color("&e$" + DF_MONEY.format(data.getMoney()));
+                default: return "";
+            }
+        }
+    }
+
+    // ==================== UTILITY ====================
+    private String color(String message) {
+        return ChatColor.translateAlternateColorCodes('&', message);
+    }
+}
