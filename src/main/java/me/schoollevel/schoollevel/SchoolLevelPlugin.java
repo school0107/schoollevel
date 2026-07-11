@@ -1,7 +1,6 @@
 package me.schoollevel.schoollevel;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -191,8 +190,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private boolean showMoneyMessage = true;
         private boolean useVaultEconomy = true;
         private String moneyFormat = "{symbol}{amount}";
-        private String actionBarFormat = "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}";
-        private int moneyMessageDuration = 60; // ticks (3 seconds)
+        private String actionBarFormat = "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}{pending}";
+        private int moneyMessageDuration = 60;
         
         public ConfigManager() {
             reload();
@@ -265,7 +264,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             showMoneyMessage = config.getBoolean("settings.show-money-message", true);
             useVaultEconomy = config.getBoolean("settings.use-vault-economy", true);
             actionBarFormat = config.getString("settings.actionbar-format", 
-                "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}");
+                "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}{pending}");
             moneyMessageDuration = config.getInt("settings.money-message-duration", 60);
         }
 
@@ -411,7 +410,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             public double getMoney() { return money; }
             public void setMoney(double money) { this.money = money; }
             public void addMoney(double amount) { this.money += amount; }
-            
             public double getPendingMoney() { return pendingMoney; }
             public void setPendingMoney(double pending) { this.pendingMoney = pending; }
             public void addPendingMoney(double amount) { this.pendingMoney += amount; }
@@ -556,10 +554,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             
             if (configManager.useVaultEconomy()) {
-                // Use Vault Economy
                 economy.depositPlayer(player, amount);
             } else {
-                // Use internal economy
                 data.addMoney(amount);
             }
             
@@ -910,4 +906,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         public void open() {
-            DataManager.PlayerData data = dataManager.getPlayer
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            
+            // Fill background
+            ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+            ItemMeta glassMeta = glass.getItemMeta();
+            glassMeta.setDisplayName(" ");
+            glass.setItemMeta(glassMeta);
+            for (int i = 0; i < 54; i++) inventory.set
