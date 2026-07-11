@@ -598,9 +598,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double xp = configManager.getBlockXP(material);
             if (xp > 0) {
                 double multiplier = permissionManager.getXPMultiplier(player);
-                if (multiplier > 1.0) {
-                    player.sendMessage(color("&a&l✦ &fXP x" + String.format("%.1f", multiplier) + " &ađược áp dụng!"));
-                }
                 xp = xp * multiplier;
                 levelManager.addXP(player, xp);
                 dataManager.getPlayerData(player).incrementBlocksBroken();
@@ -609,9 +606,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double moneyEarned = configManager.getCalculatedBlockMoney(player, material);
             if (moneyEarned > 0) {
                 double multiplier = permissionManager.getMoneyMultiplier(player);
-                if (multiplier > 1.0) {
-                    player.sendMessage(color("&e&l✦ &fMoney x" + String.format("%.1f", multiplier) + " &eđược áp dụng!"));
-                }
                 moneyEarned = moneyEarned * multiplier;
                 addMoney(player, moneyEarned);
             }
@@ -621,9 +615,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double xp = configManager.getMobXP(entityType);
             if (xp > 0) {
                 double multiplier = permissionManager.getXPMultiplier(player);
-                if (multiplier > 1.0) {
-                    player.sendMessage(color("&a&l✦ &fXP x" + String.format("%.1f", multiplier) + " &ađược áp dụng!"));
-                }
                 xp = xp * multiplier;
                 levelManager.addXP(player, xp);
             }
@@ -631,9 +622,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double moneyEarned = configManager.getMobMoney(entityType);
             if (moneyEarned > 0) {
                 double multiplier = permissionManager.getMoneyMultiplier(player);
-                if (multiplier > 1.0) {
-                    player.sendMessage(color("&e&l✦ &fMoney x" + String.format("%.1f", multiplier) + " &eđược áp dụng!"));
-                }
                 moneyEarned = moneyEarned * multiplier;
                 addMoney(player, moneyEarned);
             }
