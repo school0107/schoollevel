@@ -1,5 +1,5 @@
-# config.yml
 # SchoolLevel Configuration
+# RPG Level System with Breakthrough
 
 # XP Settings
 xp:
@@ -31,7 +31,6 @@ xp:
     dirt: 0.3
     sand: 0.3
     gravel: 0.5
-    wood: 1.0
     oak_log: 2.0
     spruce_log: 2.0
     birch_log: 2.0
@@ -40,6 +39,9 @@ xp:
     dark_oak_log: 2.0
     mangrove_log: 2.0
     cherry_log: 2.0
+    netherrack: 0.5
+    basalt: 1.0
+    blackstone: 1.5
 
   mobs:
     zombie: 10.0
@@ -67,33 +69,4 @@ xp:
     silverfish: 5.0
     slime: 6.0
     magma_cube: 8.0
-    drowned: 10.0
-    husk: 12.0
-    stray: 14.0
-    phantom: 16.0
-    warden: 100.0
-    breeze: 30.0
-    bogged: 14.0
-
-# Messages
-messages:
-  level-up: "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦"
-  breakthrough: "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! &e✦"
-  no-permission: "&c❌ Bạn không có quyền sử dụng lệnh này!"
-  player-not-found: "&c❌ Không tìm thấy người chơi!"
-  breakthrough-already: "&c❌ Bạn đã đột phá rồi!"
-  breakthrough-not-ready: "&c❌ Bạn cần đạt &6Cấp 100 &cđể sử dụng!"
-
-# Commands to execute on level up
-commands:
-  level-up:
-    - "say &6&l✦ &f%player% &eđã lên cấp &6%level%&e! Chúc mừng!"
-    - "effect give %player% minecraft:glowing 3 1"
-    
-  breakthrough:
-    - "say &6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ GIỚI HẠN! &fCấp 101 HUYỀN THOẠI!"
-    - "title %player% title &6&l✦ HUYỀN THOẠI ✦"
-    - "title %player% subtitle &eCấp 101 - Sức mạnh vô hạn"
-    - "effect give %player% minecraft:strength 60 2"
-    - "effect give %player% minecraft:resistance 60 2"
-    - "effect give %player% minecraft:speed 60 2"
+   
