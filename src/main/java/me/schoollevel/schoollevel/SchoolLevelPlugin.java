@@ -45,7 +45,6 @@ import java.util.logging.Level;
 
 public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
-    // ==================== CONSTANTS ====================
     private static final int MAX_LEVEL = 100;
     private static final int LEGENDARY_LEVEL = 101;
     private static final int XP_BAR_UPDATE_INTERVAL = 20;
@@ -53,11 +52,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private static final DecimalFormat DF = new DecimalFormat("#.##");
     private static final DecimalFormat DF_MONEY = new DecimalFormat("#,###.##");
 
-    // ==================== SINGLETON ====================
     private static SchoolLevelPlugin instance;
     private net.milkbowl.vault.economy.Economy economy;
 
-    // ==================== MANAGERS ====================
     private DataManager dataManager;
     private LevelManager levelManager;
     private AttributeManager attributeManager;
@@ -66,7 +63,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private ActionBarManager actionBarManager;
     private ConfigManager configManager;
 
-    // ==================== PLUGIN LIFECYCLE ====================
     @Override
     public void onEnable() {
         long startTime = System.currentTimeMillis();
@@ -162,7 +158,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         player.setExp((float) Math.min(xp / required, 1.0));
     }
 
-    // ==================== GETTERS ====================
     public static SchoolLevelPlugin getInstance() { return instance; }
     public DataManager getDataManager() { return dataManager; }
     public LevelManager getLevelManager() { return levelManager; }
@@ -174,7 +169,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public net.milkbowl.vault.economy.Economy getEconomy() { return economy; }
     public boolean hasEconomy() { return economy != null; }
 
-    // ==================== CONFIG MANAGER ====================
     public class ConfigManager {
         private final Map<Material, Double> blockXP = new ConcurrentHashMap<>();
         private final Map<EntityType, Double> mobXP = new ConcurrentHashMap<>();
@@ -314,7 +308,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== DATA MANAGER ====================
     public class DataManager {
         private final Map<UUID, PlayerData> playerDataMap = new ConcurrentHashMap<>();
         private final File dataFile;
@@ -435,7 +428,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== LEVEL MANAGER ====================
     public class LevelManager {
         public double getRequiredXP(int level) {
             return 100 * Math.pow(level, 1.5);
@@ -499,7 +491,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== ATTRIBUTE MANAGER ====================
     public class AttributeManager {
         private static final String HEALTH_MODIFIER = "schoollevel_health";
         private static final String DAMAGE_MODIFIER = "schoollevel_damage";
@@ -530,7 +521,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== XP MANAGER ====================
     public class XPManager {
         public void handleBlockBreak(Player player, Material material) {
             double xp = configManager.getBlockXP(material);
@@ -576,7 +566,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== BREAKTHROUGH MANAGER ====================
     public class BreakthroughManager {
         private final NamespacedKey BREAKTHROUGH_KEY = new NamespacedKey(SchoolLevelPlugin.this, "breakthrough_item");
 
@@ -650,7 +639,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== ACTION BAR MANAGER ====================
     public class ActionBarManager {
         public void updateAllPlayers() {
             for (Player player : Bukkit.getOnlinePlayers()) {
@@ -714,7 +702,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== EVENTS ====================
     @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockBreak(BlockBreakEvent event) {
         if (!event.isCancelled()) {
@@ -755,7 +742,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== COMMANDS ====================
     public class ProfileCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
@@ -897,11 +883,28 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== GUI ====================
     public class ProfileGUI {
         private final Player player;
         private final Inventory inventory;
 
         public ProfileGUI(Player player) {
             this.player = player;
-            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học S
+            this.inventory = Bukkit.createInventory(null, 54, color("&6&l✦ Thông Tin Học Sinh ✦"));
+        }
+
+        public void open() {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            
+            ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+            ItemMeta glassMeta = glass.getItemMeta();
+            glassMeta.setDisplayName(" ");
+            glass.setItemMeta(glassMeta);
+            for (int i = 0; i < 54; i++) {
+                inventory.setItem(i, glass);
+            }
+            
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta headMeta = (SkullMeta) head.getItemMeta();
+            headMeta.setOwningPlayer(player);
+            headMeta.setDisplayName(color("&6&l" + player.getName()));
+            headMeta.setLore(Arrays.asList(color("&7Thông tin
