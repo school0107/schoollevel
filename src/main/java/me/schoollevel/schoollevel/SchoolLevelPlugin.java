@@ -904,3 +904,12 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
 
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta headMeta = (SkullMeta) head.getItemMeta();
+            headMeta.setOwningPlayer(player);
+            headMeta.setDisplayName(color("&6&l" + player.getName()));
+            headMeta.setLore(Arrays.asList(color("&7Thông tin chi tiết của bạn")));
+            head.setItemMeta(headMeta);
+            inventory.setItem(4, head);
+
+            double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+            double damage = player.getAttribute(Attribute.GENERIC_ád
