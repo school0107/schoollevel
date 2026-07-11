@@ -1,29 +1,72 @@
-# SchoolLevel Configuration
-# RPG Level System with Breakthrough
+# ======================================================
+#              SCHOOLLEVEL PLUGIN CONFIG
+#                 RPG Level System v1.0
+# ======================================================
 
-# XP Settings
+# ==================== SETTINGS ====================
+settings:
+  # Currency settings
+  currency:
+    # Ký hiệu tiền tệ
+    symbol: "💰 "
+    # Tên tiền tệ
+    name: "coins"
+    # Định dạng hiển thị: {symbol}{amount} hoặc {amount} {name}
+    format: "{symbol}{amount}"
+  
+  # Sử dụng Vault Economy (nếu có)
+  # Nếu bật, plugin sẽ dùng economy của server (Essentials, CMI, etc.)
+  # Nếu tắt, plugin sẽ dùng hệ thống tiền nội bộ
+  use-vault-economy: true
+  
+  # Hiển thị thông báo nhận tiền trên actionbar
+  show-money-message: true
+  
+  # Thời gian hiển thị thông báo nhận tiền (tick, 20 tick = 1 giây)
+  money-message-duration: 60
+  
+  # ===== ACTIONBAR FORMAT =====
+  # Các placeholder có thể sử dụng:
+  # {level}    - Cấp độ hiện tại
+  # {bar}      - Thanh tiến trình (■■■■□□□□□□)
+  # {xp}       - XP hiện tại
+  # {required} - XP cần để lên cấp
+  # {health}   - Máu hiện tại
+  # {damage}   - Sát thương hiện tại
+  # {money}    - Số tiền hiện tại
+  # {pending}  - Tiền vừa nhận được (hiển thị khi có)
+  actionbar-format: "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}{pending}"
+
+# ==================== XP CONFIGURATION ====================
 xp:
+  # XP nhận được khi đào block
   blocks:
+    # Quặng quý hiếm
     diamond_ore: 15.0
+    deepslate_diamond_ore: 20.0
     emerald_ore: 20.0
+    deepslate_emerald_ore: 25.0
     netherite_ore: 30.0
     ancient_debris: 25.0
-    coal_ore: 5.0
-    iron_ore: 8.0
-    gold_ore: 10.0
-    redstone_ore: 7.0
-    lapis_ore: 8.0
-    deepslate_diamond_ore: 20.0
-    deepslate_emerald_ore: 25.0
-    deepslate_coal_ore: 7.0
-    deepslate_iron_ore: 10.0
-    deepslate_gold_ore: 12.0
-    deepslate_redstone_ore: 9.0
-    deepslate_lapis_ore: 10.0
     obsidian: 12.0
-    end_stone: 3.0
+    
+    # Quặng thường
+    coal_ore: 5.0
+    deepslate_coal_ore: 7.0
+    iron_ore: 8.0
+    deepslate_iron_ore: 10.0
+    gold_ore: 10.0
+    deepslate_gold_ore: 12.0
+    redstone_ore: 7.0
+    deepslate_redstone_ore: 9.0
+    lapis_ore: 8.0
+    deepslate_lapis_ore: 10.0
+    
+    # Nether
     nether_quartz_ore: 6.0
     nether_gold_ore: 8.0
+    
+    # Đá cơ bản
     stone: 1.0
     deepslate: 1.5
     cobblestone: 0.5
@@ -31,6 +74,12 @@ xp:
     dirt: 0.3
     sand: 0.3
     gravel: 0.5
+    netherrack: 0.5
+    basalt: 1.0
+    blackstone: 1.5
+    end_stone: 3.0
+    
+    # Gỗ
     oak_log: 2.0
     spruce_log: 2.0
     birch_log: 2.0
@@ -39,34 +88,178 @@ xp:
     dark_oak_log: 2.0
     mangrove_log: 2.0
     cherry_log: 2.0
-    netherrack: 0.5
-    basalt: 1.0
-    blackstone: 1.5
 
+  # XP nhận được khi giết mob
   mobs:
-    zombie: 10.0
-    skeleton: 12.0
-    creeper: 15.0
-    spider: 8.0
-    cave_spider: 10.0
-    enderman: 20.0
-    blaze: 18.0
-    wither_skeleton: 25.0
+    # Boss
+    warden: 100.0
+    elder_guardian: 50.0
+    ravager: 40.0
+    evoker: 35.0
+    
+    # Nether
     ghast: 30.0
-    piglin: 12.0
     piglin_brute: 25.0
+    wither_skeleton: 25.0
+    blaze: 18.0
     hoglin: 15.0
     zoglin: 18.0
-    vex: 14.0
-    evoker: 35.0
+    piglin: 12.0
+    magma_cube: 8.0
+    
+    # Overworld
+    enderman: 20.0
     vindicator: 20.0
-    pillager: 18.0
-    ravager: 40.0
-    witch: 22.0
     guardian: 20.0
-    elder_guardian: 50.0
+    pillager: 18.0
     shulker: 25.0
+    vex: 14.0
+    creeper: 15.0
+    skeleton: 12.0
+    zombie: 10.0
+    cave_spider: 10.0
+    spider: 8.0
     silverfish: 5.0
     slime: 6.0
-    magma_cube: 8.0
-   
+    witch: 22.0
+    drowned: 10.0
+    husk: 12.0
+    stray: 14.0
+    phantom: 16.0
+    
+    # Mới 1.21
+    breeze: 30.0
+    bogged: 14.0
+
+# ==================== MONEY CONFIGURATION ====================
+money:
+  # Tiền nhận được khi đào block
+  blocks:
+    # Quặng quý hiếm
+    diamond_ore: 5.0
+    deepslate_diamond_ore: 7.0
+    emerald_ore: 8.0
+    deepslate_emerald_ore: 10.0
+    netherite_ore: 15.0
+    ancient_debris: 12.0
+    obsidian: 3.0
+    
+    # Quặng thường
+    coal_ore: 1.0
+    deepslate_coal_ore: 1.5
+    iron_ore: 2.0
+    deepslate_iron_ore: 2.5
+    gold_ore: 3.0
+    deepslate_gold_ore: 3.5
+    redstone_ore: 1.5
+    deepslate_redstone_ore: 2.0
+    lapis_ore: 1.5
+    deepslate_lapis_ore: 2.0
+    
+    # Nether
+    nether_quartz_ore: 1.5
+    nether_gold_ore: 2.0
+    
+    # Đá cơ bản
+    stone: 0.2
+    deepslate: 0.3
+    cobblestone: 0.1
+    grass_block: 0.1
+    dirt: 0.05
+    sand: 0.05
+    gravel: 0.1
+    netherrack: 0.1
+    basalt: 0.2
+    blackstone: 0.3
+    
+    # Gỗ
+    oak_log: 0.5
+    spruce_log: 0.5
+    birch_log: 0.5
+    jungle_log: 0.5
+    acacia_log: 0.5
+    dark_oak_log: 0.5
+    mangrove_log: 0.5
+    cherry_log: 0.5
+
+  # Tiền nhận được khi giết mob
+  mobs:
+    # Boss
+    warden: 50.0
+    elder_guardian: 25.0
+    ravager: 20.0
+    evoker: 15.0
+    
+    # Nether
+    ghast: 12.0
+    piglin_brute: 10.0
+    wither_skeleton: 10.0
+    blaze: 8.0
+    hoglin: 6.0
+    zoglin: 7.0
+    piglin: 4.0
+    magma_cube: 3.0
+    
+    # Overworld
+    enderman: 8.0
+    vindicator: 7.0
+    guardian: 7.0
+    pillager: 6.0
+    shulker: 10.0
+    vex: 5.0
+    creeper: 5.0
+    skeleton: 4.0
+    zombie: 3.0
+    cave_spider: 3.0
+    spider: 2.5
+    silverfish: 1.0
+    slime: 2.0
+    witch: 8.0
+    drowned: 3.0
+    husk: 4.0
+    stray: 4.0
+    phantom: 5.0
+    
+    # Mới 1.21
+    breeze: 12.0
+    bogged: 4.0
+
+# ==================== BREAKTHROUGH ====================
+breakthrough:
+  # Số tiền thưởng khi đột phá
+  bonus-money: 10000.0
+
+# ==================== MESSAGES ====================
+messages:
+  # Tin nhắn khi lên cấp (CHAT)
+  level-up-chat: "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦"
+  
+  # Tin nhắn khi lên cấp (TITLE)
+  level-up-title: "&6&l⬆ LEVEL UP!"
+  level-up-subtitle: "&fBạn đã đạt &6Cấp %level%"
+  
+  # Tin nhắn đột phá (BROADCAST)
+  breakthrough: "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! ✦"
+  
+  # Lỗi
+  no-permission: "&c❌ Bạn không có quyền sử dụng lệnh này!"
+  player-not-found: "&c❌ Không tìm thấy người chơi!"
+  breakthrough-already: "&c❌ Bạn đã đột phá rồi!"
+  breakthrough-not-ready: "&c❌ Bạn cần đạt &6Cấp 100 &cđể sử dụng!"
+  invalid-amount: "&c❌ Số tiền không hợp lệ!"
+
+# ==================== COMMANDS ====================
+commands:
+  # Lệnh chạy khi lên cấp
+  level-up:
+    - "say &6&l✦ &f%player% &eđã lên cấp &6%level%&e! Chúc mừng!"
+    - "effect give %player% minecraft:glowing 3 1"
+    
+  # Lệnh chạy khi đột phá
+  breakthrough:
+    - "say &6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ GIỚI HẠN! &fCấp 101 HUYỀN THOẠI!"
+    - "title %player% title &6&l✦ HUYỀN THOẠI ✦"
+    - "title %player% subtitle &eCấp 101 - Sức mạnh vô hạn"
+    - "effect give %player% minecraft:strength 60 2"
+    - "effect give %player% minecraft:resistance 60 2"
+    - "effect give %player% minecraft:speed 60 2"
