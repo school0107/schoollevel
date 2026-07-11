@@ -194,12 +194,14 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             if (config.contains("permission-multipliers.xp")) {
                 for (String key : config.getConfigurationSection("permission-multipliers.xp").getKeys(false)) {
                     xpMultipliers.put(key, config.getDouble("permission-multipliers.xp." + key));
+                    getLogger().info("Loaded XP permission: " + key + " = " + config.getDouble("permission-multipliers.xp." + key));
                 }
             }
             
             if (config.contains("permission-multipliers.money")) {
                 for (String key : config.getConfigurationSection("permission-multipliers.money").getKeys(false)) {
                     moneyMultipliers.put(key, config.getDouble("permission-multipliers.money." + key));
+                    getLogger().info("Loaded Money permission: " + key + " = " + config.getDouble("permission-multipliers.money." + key));
                 }
             }
         }
@@ -579,6 +581,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double xp = configManager.getBlockXP(material);
             if (xp > 0) {
                 double multiplier = permissionManager.getXPMultiplier(player);
+                if (multiplier > 1.0) {
+                    player.sendMessage(color("&a&l✦ &fXP x" + String.format("%.1f", multiplier) + " &ađược áp dụng!"));
+                }
                 xp = xp * multiplier;
                 levelManager.addXP(player, xp);
                 dataManager.getPlayerData(player).incrementBlocksBroken();
@@ -587,6 +592,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double moneyEarned = configManager.getCalculatedBlockMoney(player, material);
             if (moneyEarned > 0) {
                 double multiplier = permissionManager.getMoneyMultiplier(player);
+                if (multiplier > 1.0) {
+                    player.sendMessage(color("&e&l✦ &fMoney x" + String.format("%.1f", multiplier) + " &eđược áp dụng!"));
+                }
                 moneyEarned = moneyEarned * multiplier;
                 addMoney(player, moneyEarned);
             }
@@ -596,6 +604,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double xp = configManager.getMobXP(entityType);
             if (xp > 0) {
                 double multiplier = permissionManager.getXPMultiplier(player);
+                if (multiplier > 1.0) {
+                    player.sendMessage(color("&a&l✦ &fXP x" + String.format("%.1f", multiplier) + " &ađược áp dụng!"));
+                }
                 xp = xp * multiplier;
                 levelManager.addXP(player, xp);
             }
@@ -603,6 +614,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double moneyEarned = configManager.getMobMoney(entityType);
             if (moneyEarned > 0) {
                 double multiplier = permissionManager.getMoneyMultiplier(player);
+                if (multiplier > 1.0) {
+                    player.sendMessage(color("&e&l✦ &fMoney x" + String.format("%.1f", multiplier) + " &eđược áp dụng!"));
+                }
                 moneyEarned = moneyEarned * multiplier;
                 addMoney(player, moneyEarned);
             }
@@ -789,6 +803,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 case "reload": return handleReload(sender);
                 case "givecoins": return handleGiveCoins(sender, args);
                 case "giveitem": return handleGiveItem(sender, args);
+                case "multiplier": return handleMultiplier(sender);
                 default: sendHelp(sender); return true;
             }
         }
@@ -796,9 +811,24 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private void sendHelp(CommandSender sender) {
             sender.sendMessage(color("&6&lSchoolLevel &7- &fRPG Level System"));
             sender.sendMessage(color("&e/schoollevel reload &7- &fReload config"));
+            sender.sendMessage(color("&e/schoollevel multiplier &7- &fCheck your multipliers"));
             sender.sendMessage(color("&e/schoollevel giveitem <player> &7- &fGive breakthrough item"));
             sender.sendMessage(color("&e/schoollevel givecoins <player> <amount> &7- &fGive coins"));
             sender.sendMessage(color("&e/profile &7- &fOpen profile menu"));
+        }
+
+        private boolean handleMultiplier(CommandSender sender) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Only players can use this command!");
+                return true;
+            }
+            Player player = (Player) sender;
+            double xpMult = permissionManager.getXPMultiplier(player);
+            double moneyMult = permissionManager.getMoneyMultiplier(player);
+            
+            player.sendMessage(color("&6&l✦ &fXP Multiplier: &a" + String.format("%.1f", xpMult) + "x"));
+            player.sendMessage(color("&6&l✦ &fMoney Multiplier: &a" + String.format("%.1f", moneyMult) + "x"));
+            return true;
         }
 
         private boolean handleReload(CommandSender sender) {
