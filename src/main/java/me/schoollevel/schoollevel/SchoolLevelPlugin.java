@@ -67,30 +67,30 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         long startTime = System.currentTimeMillis();
         instance = this;
-        
+
         if (!setupEconomy()) {
             getLogger().warning("Vault Economy not found! Money features will be disabled.");
         }
-        
+
         saveDefaultConfig();
         configManager = new ConfigManager();
-        
+
         if (!getDataFolder().exists()) {
             getDataFolder().mkdirs();
         }
-        
+
         dataManager = new DataManager();
         levelManager = new LevelManager();
         attributeManager = new AttributeManager();
         xpManager = new XPManager();
         breakthroughManager = new BreakthroughManager();
         actionBarManager = new ActionBarManager();
-        
+
         registerCommands();
         getServer().getPluginManager().registerEvents(this, this);
         registerPlaceholderAPI();
         startScheduledTasks();
-        
+
         getLogger().info("§a✅ SchoolLevel Plugin enabled! (Took " + (System.currentTimeMillis() - startTime) + "ms)");
     }
 
@@ -106,7 +106,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         if (getServer().getPluginManager().getPlugin("Vault") == null) {
             return false;
         }
-        RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> rsp = 
+        RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> rsp =
             getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
         if (rsp == null) {
             return false;
@@ -137,7 +137,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 }
             }
         }.runTaskTimer(this, 0, ACTION_BAR_INTERVAL);
-        
+
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -153,7 +153,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         int level = data.getLevel();
         double xp = data.getXp();
         double required = levelManager.getRequiredXP(level);
-        
+
         player.setLevel(level);
         player.setExp((float) Math.min(xp / required, 1.0));
     }
@@ -174,7 +174,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private final Map<EntityType, Double> mobXP = new ConcurrentHashMap<>();
         private final Map<Material, Double> blockMoney = new ConcurrentHashMap<>();
         private final Map<EntityType, Double> mobMoney = new ConcurrentHashMap<>();
-        
+
         private String currencySymbol = "💰 ";
         private String currencyName = "Xu";
         private boolean showMoneyMessage = true;
@@ -184,7 +184,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private int moneyMessageDuration = 60;
         private double baseBlockMoney = 0.1;
         private double levelMoneyBonus = 0.05;
-        
+
         public ConfigManager() {
             reload();
         }
@@ -199,7 +199,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private void loadXPConfig() {
             blockXP.clear();
             FileConfiguration config = getConfig();
-            
+
             if (config.contains("xp.blocks")) {
                 for (String key : config.getConfigurationSection("xp.blocks").getKeys(false)) {
                     try {
@@ -210,7 +210,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     } catch (Exception ignored) {}
                 }
             }
-            
+
             mobXP.clear();
             if (config.contains("xp.mobs")) {
                 for (String key : config.getConfigurationSection("xp.mobs").getKeys(false)) {
@@ -225,7 +225,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private void loadMoneyConfig() {
             blockMoney.clear();
             FileConfiguration config = getConfig();
-            
+
             if (config.contains("money.blocks")) {
                 for (String key : config.getConfigurationSection("money.blocks").getKeys(false)) {
                     try {
@@ -236,7 +236,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     } catch (Exception ignored) {}
                 }
             }
-            
+
             mobMoney.clear();
             if (config.contains("money.mobs")) {
                 for (String key : config.getConfigurationSection("money.mobs").getKeys(false)) {
@@ -255,7 +255,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             moneyFormat = config.getString("settings.currency.format", "{symbol}{amount}");
             showMoneyMessage = config.getBoolean("settings.show-money-message", true);
             useVaultEconomy = config.getBoolean("settings.use-vault-economy", true);
-            actionBarFormat = config.getString("settings.actionbar-format", 
+            actionBarFormat = config.getString("settings.actionbar-format",
                 "&e⚡ &fCấp &6{level} &7| &a{bar} &fXP: &b{xp}/{required} &7| &c❤ {health} &7| &6⚔ {damage} &7| &e💰 {money}{pending}");
             moneyMessageDuration = config.getInt("settings.money-message-duration", 60);
             baseBlockMoney = config.getDouble("settings.base-block-money", 0.1);
@@ -295,7 +295,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 .replace("{amount}", DF_MONEY.format(amount));
             return formatted;
         }
-        
+
         public double getCalculatedBlockMoney(Player player, Material material) {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int level = data.getLevel();
@@ -315,7 +315,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public DataManager() {
             this.dataFile = new File(getDataFolder(), "data.yml");
-            
+
             if (!dataFile.exists()) {
                 try {
                     dataFile.createNewFile();
@@ -328,7 +328,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             } else {
                 dataConfig = YamlConfiguration.loadConfiguration(dataFile);
             }
-            
+
             loadAllData();
         }
 
@@ -343,7 +343,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private void savePlayerData(UUID uuid) {
             PlayerData data = playerDataMap.get(uuid);
             if (data == null) return;
-            
+
             String path = uuid.toString();
             dataConfig.set(path + ".level", data.getLevel());
             dataConfig.set(path + ".xp", data.getXp());
@@ -361,7 +361,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         private void loadAllData() {
             if (dataConfig == null || dataConfig.getKeys(false).isEmpty()) return;
-            
+
             for (String uuidStr : dataConfig.getKeys(false)) {
                 try {
                     UUID uuid = UUID.fromString(uuidStr);
@@ -377,9 +377,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         private void saveData() {
-            try { 
-                dataConfig.save(dataFile); 
-            } catch (Exception e) { 
+            try {
+                dataConfig.save(dataFile);
+            } catch (Exception e) {
                 getLogger().log(Level.SEVERE, "Failed to save data", e);
             }
         }
@@ -401,7 +401,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             private int moneyMessageTicks = 0;
 
             public PlayerData(UUID uuid) { this.uuid = uuid; }
-            
+
             public UUID getUuid() { return uuid; }
             public int getLevel() { return level; }
             public void setLevel(int level) { this.level = level; }
@@ -421,9 +421,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             public void addPendingMoney(double amount) { this.pendingMoney += amount; }
             public int getMoneyMessageTicks() { return moneyMessageTicks; }
             public void setMoneyMessageTicks(int ticks) { this.moneyMessageTicks = ticks; }
-            public void resetMoneyMessage() { 
-                this.pendingMoney = 0; 
-                this.moneyMessageTicks = 0; 
+            public void resetMoneyMessage() {
+                this.pendingMoney = 0;
+                this.moneyMessageTicks = 0;
             }
         }
     }
@@ -435,23 +435,23 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public void addXP(Player player, double amount) {
             if (amount <= 0) return;
-            
+
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int currentLevel = data.getLevel();
-            
+
             if (currentLevel >= MAX_LEVEL && !data.hasBrokenThrough()) {
                 breakthroughManager.notifyBreakthrough(player);
                 return;
             }
             if (currentLevel >= LEGENDARY_LEVEL) return;
-            
+
             data.addXp(amount);
-            
+
             while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < LEGENDARY_LEVEL) {
                 data.setXp(data.getXp() - getRequiredXP(data.getLevel()));
                 levelUp(player);
             }
-            
+
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
             updateVanillaXPBar(player);
@@ -461,14 +461,14 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int newLevel = data.getLevel() + 1;
             data.setLevel(newLevel);
-            
+
             attributeManager.updateAttributes(player);
-            
+
             String title = getConfig().getString("messages.level-up-title", "&6&l⬆ LEVEL UP!");
             String subtitle = getConfig().getString("messages.level-up-subtitle", "&fBạn đã đạt &6Cấp %level%");
             title = color(title);
             subtitle = color(subtitle.replace("%level%", String.valueOf(newLevel)));
-            
+
             player.showTitle(Title.title(
                 Component.text(title),
                 Component.text(subtitle),
@@ -478,14 +478,14 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     Duration.ofMillis(500)
                 )
             ));
-            
-            String message = getConfig().getString("messages.level-up-chat", 
+
+            String message = getConfig().getString("messages.level-up-chat",
                 "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦")
                 .replace("%level%", String.valueOf(newLevel));
             player.sendMessage(color(message));
-            
+
             for (String cmd : getConfig().getStringList("commands.level-up")) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
                     cmd.replace("%player%", player.getName()).replace("%level%", String.valueOf(newLevel)));
             }
         }
@@ -500,7 +500,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int level = data.getLevel();
             double bonus = level * 0.01;
-            
+
             updateAttribute(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
             updateAttribute(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
             updateAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
@@ -509,11 +509,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private void updateAttribute(Player player, Attribute attribute, String modifierName, double amount) {
             AttributeInstance instance = player.getAttribute(attribute);
             if (instance == null) return;
-            
+
             instance.getModifiers().stream()
                 .filter(mod -> mod.getKey() != null && mod.getKey().getKey().equals(modifierName))
                 .forEach(instance::removeModifier);
-            
+
             if (amount > 0.001) {
                 NamespacedKey key = new NamespacedKey(SchoolLevelPlugin.this, modifierName);
                 instance.addModifier(new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_NUMBER));
@@ -529,7 +529,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 DataManager.PlayerData data = dataManager.getPlayerData(player);
                 data.incrementBlocksBroken();
             }
-            
+
             double moneyEarned = configManager.getCalculatedBlockMoney(player, material);
             if (moneyEarned > 0) {
                 addMoney(player, moneyEarned);
@@ -541,7 +541,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             if (xp > 0) {
                 levelManager.addXP(player, xp);
             }
-            
+
             double moneyEarned = configManager.getMobMoney(entityType);
             if (moneyEarned > 0) {
                 addMoney(player, moneyEarned);
@@ -550,18 +550,18 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         private void addMoney(Player player, double amount) {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
-            
+
             if (configManager.useVaultEconomy()) {
                 economy.depositPlayer(player, amount);
             } else {
                 data.addMoney(amount);
             }
-            
+
             if (configManager.showMoneyMessage()) {
                 data.addPendingMoney(amount);
                 data.setMoneyMessageTicks(configManager.getMoneyMessageDuration());
             }
-            
+
             dataManager.savePlayerData(player);
         }
     }
@@ -591,7 +591,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public void performBreakthrough(Player player) {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
-            
+
             if (data.getLevel() < 100) {
                 player.sendMessage(color("&c❌ Bạn cần đạt &6Cấp 100 &cđể sử dụng!"));
                 return;
@@ -600,34 +600,34 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 player.sendMessage(color("&c❌ Bạn đã đột phá rồi!"));
                 return;
             }
-            
+
             data.setLevel(101);
             data.setHasBrokenThrough(true);
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
-            
+
             double bonusMoney = getConfig().getDouble("breakthrough.bonus-money", 10000);
             if (configManager.useVaultEconomy()) {
                 economy.depositPlayer(player, bonusMoney);
             } else {
                 data.addMoney(bonusMoney);
             }
-            
+
             player.sendMessage(color("&6&l💰 &fBạn nhận được &6" + DF_MONEY.format(bonusMoney) + " &fcoins khi đột phá!"));
-            
-            String broadcast = getConfig().getString("messages.breakthrough", 
+
+            String broadcast = getConfig().getString("messages.breakthrough",
                 "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! ✦")
                 .replace("%player%", player.getName());
             Bukkit.broadcastMessage(color(broadcast));
-            
+
             for (String cmd : getConfig().getStringList("commands.breakthrough")) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
                     cmd.replace("%player%", player.getName()));
             }
-            
+
             player.getWorld().strikeLightningEffect(player.getLocation());
             for (int i = 0; i < 20; i++) {
-                player.getWorld().spawnParticle(org.bukkit.Particle.FLAME, 
+                player.getWorld().spawnParticle(org.bukkit.Particle.FLAME,
                     player.getLocation().add(0, 1, 0), 50, 1, 2, 1, 0.1);
             }
         }
@@ -651,23 +651,23 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             int level = data.getLevel();
             double xp = data.getXp();
             double required = levelManager.getRequiredXP(level);
-            
+
             int progress = Math.min((int) ((xp / required) * 20), 20);
             String bar = "■".repeat(Math.max(0, progress)) + "□".repeat(Math.max(0, 20 - progress));
-            
+
             double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
             double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
-            
+
             double money;
             if (configManager.useVaultEconomy()) {
                 money = economy.getBalance(player);
             } else {
                 money = data.getMoney();
             }
-            
+
             String actionBarText = buildActionBarText(player, level, bar, xp, required, health, damage, money);
             player.sendActionBar(Component.text(color(actionBarText)));
-            
+
             if (data.getMoneyMessageTicks() > 0) {
                 data.setMoneyMessageTicks(data.getMoneyMessageTicks() - 1);
                 if (data.getMoneyMessageTicks() == 0) {
@@ -676,18 +676,18 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
         }
 
-        private String buildActionBarText(Player player, int level, String bar, double xp, double required, 
+        private String buildActionBarText(Player player, int level, String bar, double xp, double required,
                                           double health, double damage, double money) {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             String format = configManager.getActionBarFormat();
-            
+
             String moneyDisplay = configManager.formatMoney(money);
-            
+
             String pendingDisplay = "";
             if (data.getMoneyMessageTicks() > 0 && data.getPendingMoney() > 0) {
                 pendingDisplay = " &a+ " + configManager.formatMoney(data.getPendingMoney());
             }
-            
+
             String result = format
                 .replace("{level}", String.valueOf(level))
                 .replace("{bar}", bar)
@@ -697,7 +697,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 .replace("{damage}", DF.format(damage))
                 .replace("{money}", moneyDisplay)
                 .replace("{pending}", pendingDisplay);
-            
+
             return result;
         }
     }
@@ -761,7 +761,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 sendHelp(sender);
                 return true;
             }
-            
+
             switch (args[0].toLowerCase()) {
                 case "reload":
                     return handleReload(sender);
@@ -788,15 +788,15 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 sender.sendMessage(color("&cYou don't have permission!"));
                 return true;
             }
-            
+
             configManager.reload();
             dataManager.reload();
-            
+
             for (Player player : Bukkit.getOnlinePlayers()) {
                 attributeManager.updateAttributes(player);
                 updateVanillaXPBar(player);
             }
-            
+
             sender.sendMessage(color("&a✅ Config reloaded successfully!"));
             return true;
         }
@@ -806,18 +806,18 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 sender.sendMessage(color("&cYou don't have permission!"));
                 return true;
             }
-            
+
             if (args.length < 3) {
                 sender.sendMessage(color("&cUsage: /schoollevel givecoins <player> <amount>"));
                 return true;
             }
-            
+
             Player target = Bukkit.getPlayer(args[1]);
             if (target == null) {
                 sender.sendMessage(color("&cPlayer not found!"));
                 return true;
             }
-            
+
             try {
                 double amount = Double.parseDouble(args[2]);
                 if (configManager.useVaultEconomy()) {
@@ -838,18 +838,18 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 sender.sendMessage(color("&cYou don't have permission!"));
                 return true;
             }
-            
+
             if (args.length < 2) {
                 sender.sendMessage(color("&cUsage: /schoollevel giveitem <player>"));
                 return true;
             }
-            
+
             Player target = Bukkit.getPlayer(args[1]);
             if (target == null) {
                 sender.sendMessage(color("&cPlayer not found!"));
                 return true;
             }
-            
+
             target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
             sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
             target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
@@ -864,18 +864,18 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 sender.sendMessage(color("&cUsage: /schoollevelgiveitem <player>"));
                 return true;
             }
-            
+
             if (!sender.hasPermission("schoollevel.admin")) {
                 sender.sendMessage(color("&cYou don't have permission!"));
                 return true;
             }
-            
+
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
                 sender.sendMessage(color("&cPlayer not found!"));
                 return true;
             }
-            
+
             target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
             sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
             target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
@@ -894,7 +894,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public void open() {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
-            
+
             ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
             ItemMeta glassMeta = glass.getItemMeta();
             glassMeta.setDisplayName(" ");
@@ -902,8 +902,5 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             for (int i = 0; i < 54; i++) {
                 inventory.setItem(i, glass);
             }
-            
+
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta headMeta = (SkullMeta) head.getItemMeta();
-            headMeta.setOwningPlayer(player);
-            headMeta.setDisplayName(color("
