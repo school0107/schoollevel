@@ -58,7 +58,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         saveDefaultConfig();
         reloadConfig();
         
-        // Initialize managers
         dataManager = new DataManager();
         levelManager = new LevelManager();
         attributeManager = new AttributeManager();
@@ -66,21 +65,17 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         breakthroughManager = new BreakthroughManager();
         actionBarManager = new ActionBarManager();
         
-        // Register commands
         Objects.requireNonNull(getCommand("profile")).setExecutor(new ProfileCommand());
         Objects.requireNonNull(getCommand("schoollevel")).setExecutor(new SchoolLevelCommand());
         Objects.requireNonNull(getCommand("schoollevelgiveitem")).setExecutor(new GiveItemCommand());
         
-        // Register events
         getServer().getPluginManager().registerEvents(this, this);
         
-        // Register PlaceholderAPI
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new SchoolLevelExpansion().register();
             getLogger().info("✅ PlaceholderAPI registered!");
         }
         
-        // Action bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -256,7 +251,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             int level = data.getLevel();
             double bonus = level * 0.01;
             
-            // Sử dụng NamespacedKey thay vì UUID cho 1.21+
             updateAttribute(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
             updateAttribute(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
             updateAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
@@ -266,13 +260,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             AttributeInstance instance = player.getAttribute(attribute);
             if (instance == null) return;
             
-            // Remove existing modifier
             instance.getModifiers().stream()
                 .filter(mod -> mod.getKey() != null && mod.getKey().getKey().equals(modifierName))
                 .forEach(instance::removeModifier);
             
             if (amount > 0) {
-                // Tạo NamespacedKey
                 NamespacedKey key = new NamespacedKey(SchoolLevelPlugin.this, modifierName);
                 AttributeModifier modifier = new AttributeModifier(
                     key,
@@ -544,14 +536,12 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         public void open() {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             
-            // Fill background
             ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
             ItemMeta glassMeta = glass.getItemMeta();
             glassMeta.setDisplayName(" ");
             glass.setItemMeta(glassMeta);
             for (int i = 0; i < 54; i++) inventory.setItem(i, glass);
             
-            // Player head
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta headMeta = (SkullMeta) head.getItemMeta();
             headMeta.setOwningPlayer(player);
@@ -560,7 +550,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             head.setItemMeta(headMeta);
             inventory.setItem(4, head);
             
-            // Stats
             double health = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
             double damage = player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue();
             double speed = player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue();
