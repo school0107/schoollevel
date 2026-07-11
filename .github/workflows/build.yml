@@ -2,27 +2,75 @@ name: Build SchoolLevel Plugin
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Version to release'
+        required: false
+        default: '1.0.0'
+        type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
+    
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
+    
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
-    - name: Upload Artifact
+      run: mvn clean package
+    
+    - name: Upload JAR artifact
       uses: actions/upload-artifact@v4
       with:
-        name: SchoolLevel-Jar-File
+        name: SchoolLevel-JAR
         path: target/*.jar
+        if-no-files-found: error
+    
+    - name: Get JAR name
+      id: get_jar
+      run: |
+        JAR_NAME=$(ls target/*.jar | head -1 | xargs basename)
+        echo "jar_name=$JAR_NAME" >> $GITHUB_OUTPUT
+        echo "Found JAR: $JAR_NAME"
+    
+    - name: Create Release (on push to main/master)
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: |
+          target/*.jar
+          target/*.jar.md5
+          target/*.jar.sha1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Manual Release
+      if: github.event_name == 'workflow_dispatch'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.event.inputs.release_version }}
+        name: Release v${{ github.event.inputs.release_version }}
+        draft: false
+        prerelease: false
+        files: |
+          target/*.jar
+          target/*.jar.md5
+          target/*.jar.sha1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
