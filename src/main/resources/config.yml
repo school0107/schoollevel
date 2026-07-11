@@ -1,136 +1,99 @@
-# ==========================================
-#         SchoolLevel Configuration
-# ==========================================
+# config.yml
+# SchoolLevel Configuration
 
-settings:
-  base-xp: 100
-  xp-multiplier: 1.1
-  papi-level-formatted: "⭐%level%"
+# XP Settings
+xp:
+  blocks:
+    diamond_ore: 15.0
+    emerald_ore: 20.0
+    netherite_ore: 30.0
+    ancient_debris: 25.0
+    coal_ore: 5.0
+    iron_ore: 8.0
+    gold_ore: 10.0
+    redstone_ore: 7.0
+    lapis_ore: 8.0
+    deepslate_diamond_ore: 20.0
+    deepslate_emerald_ore: 25.0
+    deepslate_coal_ore: 7.0
+    deepslate_iron_ore: 10.0
+    deepslate_gold_ore: 12.0
+    deepslate_redstone_ore: 9.0
+    deepslate_lapis_ore: 10.0
+    obsidian: 12.0
+    end_stone: 3.0
+    nether_quartz_ore: 6.0
+    nether_gold_ore: 8.0
+    stone: 1.0
+    deepslate: 1.5
+    cobblestone: 0.5
+    grass_block: 0.5
+    dirt: 0.3
+    sand: 0.3
+    gravel: 0.5
+    wood: 1.0
+    oak_log: 2.0
+    spruce_log: 2.0
+    birch_log: 2.0
+    jungle_log: 2.0
+    acacia_log: 2.0
+    dark_oak_log: 2.0
+    mangrove_log: 2.0
+    cherry_log: 2.0
 
-# ------------------------------------------
-# TÙY CHỈNH CHỈ SỐ TĂNG TIỂN THEO % MỖI CẤP
-# ------------------------------------------
-stats-per-level:
-  health: 0.01       # Tăng 1% Máu gốc mỗi cấp
-  damage: 0.01       # Tăng 1% Sát thương gốc mỗi cấp
-  speed: 0.005       # Tăng 0.5% Tốc độ gốc mỗi cấp
+  mobs:
+    zombie: 10.0
+    skeleton: 12.0
+    creeper: 15.0
+    spider: 8.0
+    cave_spider: 10.0
+    enderman: 20.0
+    blaze: 18.0
+    wither_skeleton: 25.0
+    ghast: 30.0
+    piglin: 12.0
+    piglin_brute: 25.0
+    hoglin: 15.0
+    zoglin: 18.0
+    vex: 14.0
+    evoker: 35.0
+    vindicator: 20.0
+    pillager: 18.0
+    ravager: 40.0
+    witch: 22.0
+    guardian: 20.0
+    elder_guardian: 50.0
+    shulker: 25.0
+    silverfish: 5.0
+    slime: 6.0
+    magma_cube: 8.0
+    drowned: 10.0
+    husk: 12.0
+    stray: 14.0
+    phantom: 16.0
+    warden: 100.0
+    breeze: 30.0
+    bogged: 14.0
 
-# ------------------------------------------
-# VẬT PHẨM ĐỘT PHÁ (Từ Cấp 100 lên 101)
-# ------------------------------------------
-breakthrough-item:
-  material: "NETHER_STAR"
-  name: "<gradient:#ff007f:#7f00ff><b>🔥 ĐÁ ĐỘT PHÁ GIỚI HẠN 🔥</b></gradient>"
-  lore:
-    - ""
-    - "<gray>Vật phẩm chứa đựng sức mạnh vô biên.</gray>"
-    - "<gray>Sử dụng khi đạt <yellow>Cấp 100</yellow> để phá vỡ</gray>"
-    - "<gray>xiềng xích và tiến vào cảnh giới mới!</gray>"
-    - ""
-    - "<red>⚠️ Click Chuột Phải để sử dụng.</red>"
-  custom-model-data: 0
-  commands-on-success:
-    - "eco give %player% 50000"
-    - "broadcast <gradient:#f12711:#f5af19><b>⚡ Người chơi %player% đã Đột Phá Giới Hạn thành công! ⚡</b></gradient>"
-
-# ------------------------------------------
-# KINH NGHIỆM ĐÀO BLOCK (0.1 Money/Cấp khi đào)
-# ------------------------------------------
-blocks:
-  STONE: 5
-  COAL_ORE: 10
-  DEEPSLATE_COAL_ORE: 10
-  IRON_ORE: 40
-  DEEPSLATE_IRON_ORE: 40
-  GOLD_ORE: 55
-  DEEPSLATE_GOLD_ORE: 15
-  REDSTONE_ORE: 42
-  DEEPSLATE_REDSTONE_ORE: 12
-  LAPIS_ORE: 35
-  DEEPSLATE_LAPIS_ORE: 15
-  DIAMOND_ORE: 100
-  DEEPSLATE_DIAMOND_ORE: 30
-  EMERALD_ORE: 150
-  DEEPSLATE_EMERALD_ORE: 50
-  NETHER_QUARTZ_ORE: 8
-  NETHER_GOLD_ORE: 300
-  ANCIENT_DEBRIS: 100
-
-mobs:
-  ZOMBIE: 200
-  SKELETON: 300
-  CREEPER: 500
-  SPIDER: 500
-  ENDERMAN: 1500
-  PIGLIN: 600
-  BLAZE: 1200
-  GHAST: 2000
-  WITHER_SKELETON: 1500
-  WARDEN: 50000
-  WITHER: 10000
-  ENDER_DRAGON: 20000
-
-actionbar:
-  enabled: true
-  format: "<gold>Cấp: %level%</gold> <gray>[%progress_bar%]</gray> <yellow>%xp%/%next_xp% XP</yellow> | <red>❤ %health%/%max_health%</red> | <dark_red>⚔ %damage%</dark_red> | <green>🛡 %armor%</green>"
-
-# ------------------------------------------
-# GIAO DIỆN HỒ SƠ (PROFILE MENU)
-# ------------------------------------------
-menu:
-  title: "📊 BẢNG THÔNG TIN NGƯỜI CHƠI"
-  size: 27
-  filler:
-    material: "GRAY_STAINED_GLASS_PANE"
-    slots: [0,1,2,3,4,5,6,7,8,9,11,13,15,17,18,19,20,21,22,23,24,25,26]
-  
-  close_button:
-    slot: 22
-    material: "BARRIER"
-    name: "<red><b>ĐÓNG GIAO DIỆN</b></red>"
-
-  stats:
-    level:
-      slot: 10
-      material: "EXPERIENCE_BOTTLE"
-      name: "<yellow><b>✨ Thông Tin Tu Vi</b></yellow>"
-      lore:
-        - "<gray>Cấp Độ Hiện Tại: <gold>%level%</gold>"
-        - "<gray>Kinh Nghiệm: <green>%xp%/%next_xp% XP</green>"
-        - ""
-        - "<gray>Tổng block đã đào: <aqua>%blocks_broken%</aqua>"
-        - "<gray>Thời gian online: <aqua>%time_online% phút</aqua>"
-    combat:
-      slot: 12
-      material: "DIAMOND_SWORD"
-      name: "<red><b>⚔ Chỉ Số Chiến Đấu</b></red>"
-      lore:
-        - "<gray>Sát Thương: <dark_red>%damage% ⚔</dark_red>"
-        - "<gray>Sinh Mệnh: <red>%health% HP (%health_hearts% ❤)</red>"
-        - "<gray>Phòng Thủ: <green>%armor% 🛡</green>"
-        - "<gray>Tốc Độ: <light_purple>%speed% ⚡</light_purple>"
-    activity:
-      slot: 14
-      material: "BOOK"
-      name: "<aqua><b>📜 Thuộc Tính Hệ Thống</b></aqua>"
-      lore:
-        - "<gray>Gia tăng sức mạnh theo tỷ lệ phần trăm.</gray>"
-        - "<gray>Mỗi cấp tăng thêm:</gray>"
-        - "<red>  +1% Máu tối đa gốc</red>"
-        - "<dark_red>  +1% Sát thương cận chiến gốc</red>"
-        - "<light_purple>  +0.5% Tốc độ di chuyển gốc</light_purple>"
-
+# Messages
 messages:
-  prefix: "<gradient:#4facfe:#00f2fe><b>[SchoolLevel]</b></gradient> "
-  no-permission: "<red>Bạn không có quyền hạn để thực hiện lệnh này!</red>"
-  reload: "<green>Đã tải lại cấu hình hệ thống thành công!</green>"
-  status: "<gray>Cấp độ: <gold>%level%</gold> | XP: <green>%xp%/%next_xp%</green>"
-  level-up: "<newline><gradient:#f12711:#f5af19><b>★ CHÚC MỪNG ★</b></gradient> <gold>Bạn đã đột phá lên Cấp <green>%level%</green>!</gold><newline>"
-  level-up-title: "<gradient:#f12711:#f5af19><b>LEVEL UP!</b></gradient>"
-  level-up-subtitle: "<gold>Bạn đã đạt cấp độ <green>%level%</green></gold>"
-  breakthrough-needed: "<red>Bạn đã đạt cấp 100! Hãy sử dụng Đá Đột Phá để lên cấp tiếp theo!</red>"
-  not-max: "<red>Bạn chưa đạt cấp 100 để có thể sử dụng vật phẩm này!</red>"
-  already-break: "<red>Bạn đã đột phá giới hạn trước đó rồi!</red>"
-  breakthrough-success: "<green>Chúc mừng bạn đã phá vỡ xiềng xích thành công!</green>"
-  level-set-target: "<green>Cấp độ của bạn đã được đặt thành <yellow>%level%</yellow> bởi quản trị viên!</green>"
-  level-set-sender: "<green>Đã đặt cấp độ của người chơi <yellow>%player%</yellow> thành <white>%level%</white>.</green>"
+  level-up: "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦"
+  breakthrough: "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! &e✦"
+  no-permission: "&c❌ Bạn không có quyền sử dụng lệnh này!"
+  player-not-found: "&c❌ Không tìm thấy người chơi!"
+  breakthrough-already: "&c❌ Bạn đã đột phá rồi!"
+  breakthrough-not-ready: "&c❌ Bạn cần đạt &6Cấp 100 &cđể sử dụng!"
+
+# Commands to execute on level up
+commands:
+  level-up:
+    - "say &6&l✦ &f%player% &eđã lên cấp &6%level%&e! Chúc mừng!"
+    - "effect give %player% minecraft:glowing 3 1"
+    
+  breakthrough:
+    - "say &6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ GIỚI HẠN! &fCấp 101 HUYỀN THOẠI!"
+    - "title %player% title &6&l✦ HUYỀN THOẠI ✦"
+    - "title %player% subtitle &eCấp 101 - Sức mạnh vô hạn"
+    - "effect give %player% minecraft:strength 60 2"
+    - "effect give %player% minecraft:resistance 60 2"
+    - "effect give %player% minecraft:speed 60 2"
