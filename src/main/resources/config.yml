@@ -28,6 +28,11 @@ settings:
   base-block-money: 0.1
   level-money-bonus: 0.05
 
+  hide-extra-hearts: true
+  
+  # Số tim hiển thị (mặc định 10 tim = 20 máu)
+  visible-hearts: 10
+
 # ==================== XP CONFIGURATION ====================
 xp:
   blocks:
