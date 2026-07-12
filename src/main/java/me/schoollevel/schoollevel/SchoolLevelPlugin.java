@@ -46,7 +46,6 @@ import java.util.logging.Level;
 
 public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
-    public static final int MAX_LEVEL = 100;
     public static final int XP_BAR_UPDATE_INTERVAL = 20;
     public static final int ACTION_BAR_INTERVAL = 20;
     public static final DecimalFormat DF = new DecimalFormat("#.##");
@@ -506,32 +505,39 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public class LevelManager {
         private double xpMultiplier = 1.1;
         private int maxLevel = 500;
+        private int baseMaxLevel = 100;
         
         public void reloadConfig() {
             xpMultiplier = getConfig().getDouble("settings.level-xp-multiplier", 1.1);
             maxLevel = getConfig().getInt("settings.max-level", 500);
+            baseMaxLevel = getConfig().getInt("settings.base-max-level", 100);
         }
         
         public double getRequiredXP(int level) {
             return 100 * Math.pow(level, 1.5) * Math.pow(xpMultiplier, level);
         }
 
-        public int getMaxLevel() {
-            return maxLevel;
-        }
+        public int getMaxLevel() { return maxLevel; }
+        public int getBaseMaxLevel() { return baseMaxLevel; }
 
         public void addXP(Player player, double amount) {
             if (amount <= 0) return;
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int currentLevel = data.getLevel();
+            
+            int effectiveMaxLevel = data.hasBrokenThrough() ? maxLevel : baseMaxLevel;
 
-            if (currentLevel >= maxLevel) {
-                player.sendMessage(color("&c❌ Bạn đã đạt cấp tối đa!"));
+            if (currentLevel >= effectiveMaxLevel) {
+                if (!data.hasBrokenThrough()) {
+                    breakthroughManager.notifyBreakthrough(player);
+                } else {
+                    player.sendMessage(color("&c❌ Bạn đã đạt cấp tối đa!"));
+                }
                 return;
             }
 
             data.addXp(amount);
-            while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < maxLevel) {
+            while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < effectiveMaxLevel) {
                 data.setXp(data.getXp() - getRequiredXP(data.getLevel()));
                 levelUp(player);
             }
@@ -666,7 +672,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 }
             }
             
-            // Nếu không có config, thêm default
             if (breakthroughLevels.isEmpty()) {
                 breakthroughLevels.put(200, new BreakthroughLevel(200, 10000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 200! 🎉")));
                 breakthroughLevels.put(300, new BreakthroughLevel(300, 50000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 300! 🎉")));
@@ -846,13 +851,23 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             String actionBarText = configManager.getActionBarFormat()
                 .replace("{level}", String.valueOf(level))
                 .replace("{bar}", bar)
-                .replace("{xp}", DF.format(xp))
-                .replace("{required}", DF.format(required))
+                .replace("{xp}", formatNumber(xp))
+                .replace("{required}", formatNumber(required))
                 .replace("{health}", DF.format(health))
                 .replace("{damage}", DF.format(damage))
                 .replace("{money}", moneyDisplay);
 
             player.sendActionBar(Component.text(color(actionBarText)));
+        }
+        
+        private String formatNumber(double number) {
+            if (number >= 1000000) {
+                return String.format("%.1f", number / 1000000) + "m";
+            } else if (number >= 1000) {
+                return String.format("%.1f", number / 1000) + "k";
+            } else {
+                return String.format("%.0f", number);
+            }
         }
     }
 
@@ -894,7 +909,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // ==================== GUI CLICK EVENT ====================
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
@@ -928,6 +942,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 case "reload": return handleReload(sender);
                 case "givecoins": return handleGiveCoins(sender, args);
                 case "multiplier": return handleMultiplier(sender);
+                case "setlevel": return handleSetLevel(sender, args);
                 default: sendHelp(sender); return true;
             }
         }
@@ -936,6 +951,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             sender.sendMessage(color("&6&lSchoolLevel &7- &fRPG Level System"));
             sender.sendMessage(color("&e/schoollevel reload &7- &fReload config"));
             sender.sendMessage(color("&e/schoollevel multiplier &7- &fCheck your multipliers"));
+            sender.sendMessage(color("&e/schoollevel setlevel <player> <level> &7- &fSet player level"));
             sender.sendMessage(color("&e/schoollevel givecoins <player> <amount> &7- &fGive coins"));
             sender.sendMessage(color("&e/schoollevelgivebreakthrough <player> <level> &7- &fGive breakthrough item"));
             sender.sendMessage(color("&e/profile &7- &fOpen profile menu"));
@@ -999,6 +1015,51 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 target.sendMessage(color("&6&l💰 &fBạn nhận được &6" + DF_MONEY.format(amount) + " &fcoins!"));
             } catch (NumberFormatException e) {
                 sender.sendMessage(color("&cInvalid amount!"));
+            }
+            return true;
+        }
+
+        private boolean handleSetLevel(CommandSender sender, String[] args) {
+            if (!sender.hasPermission("schoollevel.admin")) {
+                sender.sendMessage(color("&cYou don't have permission!"));
+                return true;
+            }
+            if (args.length < 3) {
+                sender.sendMessage(color("&cUsage: /schoollevel setlevel <player> <level>"));
+                return true;
+            }
+            
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage(color("&cPlayer not found!"));
+                return true;
+            }
+            
+            try {
+                int level = Integer.parseInt(args[2]);
+                int maxLevel = levelManager.getMaxLevel();
+                if (level < 1 || level > maxLevel) {
+                    sender.sendMessage(color("&cLevel must be between 1 and " + maxLevel));
+                    return true;
+                }
+                
+                DataManager.PlayerData data = dataManager.getPlayerData(target);
+                data.setLevel(level);
+                data.setXp(0);
+                
+                // Tự động set đã đột phá nếu level > 100
+                if (level > 100 && !data.hasBrokenThrough()) {
+                    data.setHasBrokenThrough(true);
+                }
+                
+                attributeManager.updateAttributes(target);
+                dataManager.savePlayerData(target);
+                updateVanillaXPBar(target);
+                
+                sender.sendMessage(color("&a✅ Set " + target.getName() + "'s level to " + level));
+                target.sendMessage(color("&6&l✦ &fYour level has been set to &6" + level));
+            } catch (NumberFormatException e) {
+                sender.sendMessage(color("&cInvalid level!"));
             }
             return true;
         }

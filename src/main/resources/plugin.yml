@@ -14,7 +14,7 @@ commands:
     aliases: [schoollevelmenu]
   schoollevel:
     description: ⚙️ Quản lý SchoolLevel
-    usage: /schoollevel <reload|givecoins|multiplier>
+    usage: /schoollevel <reload|givecoins|multiplier|setlevel>
     permission: schoollevel.admin
   schoollevelgivebreakthrough:
     description: 💎 Cấp Đá Đột Phá

@@ -6,7 +6,11 @@
 settings:
   # Cấp tối đa cho phép
   max-level: 500
+
+  # Cấp tối đa mặc định (trước khi đột phá)
+  base-max-level: 100  # <--- THÊM DÒNG NÀY
   
+  # ... các settings khác giữ nguyên ...
   # Hệ số nhân XP mỗi cấp
   level-xp-multiplier: 1.1
   
