@@ -47,7 +47,6 @@ import java.util.logging.Level;
 public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
     public static final int MAX_LEVEL = 100;
-    public static final int LEGENDARY_LEVEL = 101;
     public static final int XP_BAR_UPDATE_INTERVAL = 20;
     public static final int ACTION_BAR_INTERVAL = 20;
     public static final DecimalFormat DF = new DecimalFormat("#.##");
@@ -121,7 +120,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private void registerCommands() {
         Objects.requireNonNull(getCommand("profile")).setExecutor(new ProfileCommand());
         Objects.requireNonNull(getCommand("schoollevel")).setExecutor(new SchoolLevelCommand());
-        Objects.requireNonNull(getCommand("schoollevelgiveitem")).setExecutor(new GiveItemCommand());
+        Objects.requireNonNull(getCommand("schoollevelgivebreakthrough")).setExecutor(new GiveBreakthroughCommand());
     }
 
     private void registerPlaceholderAPI() {
@@ -192,7 +191,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             FileConfiguration config = getConfig();
             
-            // DEFAULT VALUES
             xpMultipliers.put("schoollevel.xp.2", 2.0);
             xpMultipliers.put("schoollevel.xp.3", 3.0);
             xpMultipliers.put("schoollevel.xp.4", 4.0);
@@ -507,13 +505,19 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     // ==================== LEVEL MANAGER ====================
     public class LevelManager {
         private double xpMultiplier = 1.1;
+        private int maxLevel = 500;
         
         public void reloadConfig() {
             xpMultiplier = getConfig().getDouble("settings.level-xp-multiplier", 1.1);
+            maxLevel = getConfig().getInt("settings.max-level", 500);
         }
         
         public double getRequiredXP(int level) {
             return 100 * Math.pow(level, 1.5) * Math.pow(xpMultiplier, level);
+        }
+
+        public int getMaxLevel() {
+            return maxLevel;
         }
 
         public void addXP(Player player, double amount) {
@@ -521,14 +525,13 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int currentLevel = data.getLevel();
 
-            if (currentLevel >= MAX_LEVEL && !data.hasBrokenThrough()) {
-                breakthroughManager.notifyBreakthrough(player);
+            if (currentLevel >= maxLevel) {
+                player.sendMessage(color("&c❌ Bạn đã đạt cấp tối đa!"));
                 return;
             }
-            if (currentLevel >= LEGENDARY_LEVEL) return;
 
             data.addXp(amount);
-            while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < LEGENDARY_LEVEL) {
+            while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < maxLevel) {
                 data.setXp(data.getXp() - getRequiredXP(data.getLevel()));
                 levelUp(player);
             }
@@ -639,61 +642,149 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     // ==================== BREAKTHROUGH MANAGER ====================
     public class BreakthroughManager {
         private final NamespacedKey BREAKTHROUGH_KEY = new NamespacedKey(SchoolLevelPlugin.this, "breakthrough_item");
-
-        public ItemStack createBreakthroughItem() {
+        private final Map<Integer, BreakthroughLevel> breakthroughLevels = new HashMap<>();
+        
+        public BreakthroughManager() {
+            loadBreakthroughConfig();
+        }
+        
+        public void loadBreakthroughConfig() {
+            breakthroughLevels.clear();
+            FileConfiguration config = getConfig();
+            
+            if (config.contains("breakthrough.levels")) {
+                for (String key : config.getConfigurationSection("breakthrough.levels").getKeys(false)) {
+                    try {
+                        int level = Integer.parseInt(key);
+                        double requiredMoney = config.getDouble("breakthrough.levels." + key + ".required-money", 0);
+                        List<String> commands = config.getStringList("breakthrough.levels." + key + ".commands");
+                        
+                        BreakthroughLevel btLevel = new BreakthroughLevel(level, requiredMoney, commands);
+                        breakthroughLevels.put(level, btLevel);
+                        getLogger().info("✅ Loaded breakthrough level " + level + " (Required: " + requiredMoney + " coins)");
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            
+            // Nếu không có config, thêm default
+            if (breakthroughLevels.isEmpty()) {
+                breakthroughLevels.put(200, new BreakthroughLevel(200, 10000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 200! 🎉")));
+                breakthroughLevels.put(300, new BreakthroughLevel(300, 50000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 300! 🎉")));
+                breakthroughLevels.put(400, new BreakthroughLevel(400, 200000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 400! 🎉")));
+                breakthroughLevels.put(500, new BreakthroughLevel(500, 500000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 500! 🎉")));
+                getLogger().info("✅ Using default breakthrough levels");
+            }
+        }
+        
+        public BreakthroughLevel getNextBreakthroughLevel(Player player) {
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int currentLevel = data.getLevel();
+            
+            BreakthroughLevel next = null;
+            for (BreakthroughLevel bt : breakthroughLevels.values()) {
+                if (bt.getLevel() > currentLevel) {
+                    if (next == null || bt.getLevel() < next.getLevel()) {
+                        next = bt;
+                    }
+                }
+            }
+            return next;
+        }
+        
+        public ItemStack createBreakthroughItem(int targetLevel) {
             ItemStack item = new ItemStack(Material.NETHER_STAR);
             ItemMeta meta = item.getItemMeta();
-            meta.setDisplayName(color("&6&l✦ Đá Đột Phá Thần Cấp ✦"));
+            BreakthroughLevel bt = breakthroughLevels.get(targetLevel);
+            double requiredMoney = bt != null ? bt.getRequiredMoney() : 0;
+            
+            meta.setDisplayName(color("&6&l✦ Đá Đột Phá Cấp " + targetLevel + " ✦"));
             meta.setLore(Arrays.asList(
-                color("&7&oMở khóa sức mạnh tiềm ẩn..."),
+                color("&7&oMở khóa giới hạn cấp " + targetLevel),
                 "",
                 color("&e&l⚠ &fClick chuột phải để đột phá!"),
-                color("&c&l✦ &fYêu cầu: &6Cấp 100")
+                color("&c&l✦ &fYêu cầu: &6Cấp " + (targetLevel - 1) + " &7và &6" + DF_MONEY.format(requiredMoney) + " coins")
             ));
-            meta.getPersistentDataContainer().set(BREAKTHROUGH_KEY, PersistentDataType.BOOLEAN, true);
+            meta.getPersistentDataContainer().set(BREAKTHROUGH_KEY, PersistentDataType.INTEGER, targetLevel);
             item.setItemMeta(meta);
             return item;
         }
-
+        
+        public int getBreakthroughTarget(ItemStack item) {
+            if (item == null || !item.hasItemMeta()) return -1;
+            return item.getItemMeta().getPersistentDataContainer().getOrDefault(BREAKTHROUGH_KEY, PersistentDataType.INTEGER, -1);
+        }
+        
         public boolean isBreakthroughItem(ItemStack item) {
-            if (item == null || !item.hasItemMeta()) return false;
-            return item.getItemMeta().getPersistentDataContainer().has(BREAKTHROUGH_KEY, PersistentDataType.BOOLEAN);
+            return getBreakthroughTarget(item) > 0;
+        }
+        
+        public double getRequiredMoney(int targetLevel) {
+            BreakthroughLevel bt = breakthroughLevels.get(targetLevel);
+            return bt != null ? bt.getRequiredMoney() : 0;
         }
 
         public void performBreakthrough(Player player) {
-            DataManager.PlayerData data = dataManager.getPlayerData(player);
-            if (data.getLevel() < 100) {
-                player.sendMessage(color("&c❌ Bạn cần đạt &6Cấp 100 &cđể sử dụng!"));
+            ItemStack item = player.getInventory().getItemInMainHand();
+            if (!isBreakthroughItem(item)) {
+                player.sendMessage(color("&c❌ Bạn không cầm đá đột phá!"));
                 return;
             }
-            if (data.hasBrokenThrough()) {
-                player.sendMessage(color("&c❌ Bạn đã đột phá rồi!"));
+            
+            int targetLevel = getBreakthroughTarget(item);
+            BreakthroughLevel bt = breakthroughLevels.get(targetLevel);
+            if (bt == null) {
+                player.sendMessage(color("&c❌ Cấp đột phá không hợp lệ!"));
                 return;
+            }
+            
+            DataManager.PlayerData data = dataManager.getPlayerData(player);
+            int currentLevel = data.getLevel();
+            
+            if (currentLevel >= targetLevel) {
+                player.sendMessage(color("&c❌ Bạn đã đạt cấp " + targetLevel + " rồi!"));
+                return;
+            }
+            
+            if (currentLevel != targetLevel - 1) {
+                player.sendMessage(color("&c❌ Bạn cần đạt &6Cấp " + (targetLevel - 1) + " &cđể sử dụng!"));
+                return;
+            }
+            
+            double requiredMoney = bt.getRequiredMoney();
+            if (configManager.useVaultEconomy()) {
+                if (economy.getBalance(player) < requiredMoney) {
+                    player.sendMessage(color("&c❌ Bạn cần &6" + DF_MONEY.format(requiredMoney) + " &ccoins để đột phá!"));
+                    return;
+                }
+                economy.withdrawPlayer(player, requiredMoney);
+            } else {
+                if (data.getMoney() < requiredMoney) {
+                    player.sendMessage(color("&c❌ Bạn cần &6" + DF_MONEY.format(requiredMoney) + " &ccoins để đột phá!"));
+                    return;
+                }
+                data.setMoney(data.getMoney() - requiredMoney);
             }
 
-            data.setLevel(101);
+            data.setLevel(targetLevel);
             data.setHasBrokenThrough(true);
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
-
-            double bonusMoney = getConfig().getDouble("breakthrough.bonus-money", 10000);
-            if (configManager.useVaultEconomy()) {
-                economy.depositPlayer(player, bonusMoney);
-            } else {
-                data.addMoney(bonusMoney);
-            }
-
-            player.sendMessage(color("&6&l💰 &fBạn nhận được &6" + DF_MONEY.format(bonusMoney) + " &fcoins khi đột phá!"));
-
+            
+            item.setAmount(item.getAmount() - 1);
+            
+            player.sendMessage(color("&6&l🎉 &fBạn đã đột phá lên &6Cấp " + targetLevel + "&f!"));
+            
             String broadcast = getConfig().getString("messages.breakthrough",
-                "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! ✦")
-                .replace("%player%", player.getName());
+                "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP %level% HUYỀN THOẠI! ✦")
+                .replace("%player%", player.getName())
+                .replace("%level%", String.valueOf(targetLevel));
             Bukkit.broadcastMessage(color(broadcast));
-
-            for (String cmd : getConfig().getStringList("commands.breakthrough")) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("%player%", player.getName()));
+            
+            for (String cmd : bt.getCommands()) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
+                    cmd.replace("%player%", player.getName()).replace("%level%", String.valueOf(targetLevel)));
             }
-
+            
             player.getWorld().strikeLightningEffect(player.getLocation());
             for (int i = 0; i < 20; i++) {
                 player.getWorld().spawnParticle(org.bukkit.Particle.FLAME,
@@ -702,9 +793,32 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         public void notifyBreakthrough(Player player) {
-            player.sendMessage(color("&e&l✦ &fBạn đã đạt &6Cấp 100&f!"));
-            player.sendMessage(color("&e&l✦ &fSử dụng &6Đá Đột Phá &fđể lên &6Cấp 101"));
-            player.sendMessage(color("&e&l✦ &fGõ &6/schoollevel giveitem " + player.getName() + " &fđể nhận vật phẩm"));
+            BreakthroughLevel next = getNextBreakthroughLevel(player);
+            if (next != null) {
+                int targetLevel = next.getLevel();
+                double requiredMoney = next.getRequiredMoney();
+                player.sendMessage(color("&e&l✦ &fBạn đã đạt &6Cấp " + (targetLevel - 1) + "&f!"));
+                player.sendMessage(color("&e&l✦ &fSử dụng &6Đá Đột Phá Cấp " + targetLevel + " &fđể lên &6Cấp " + targetLevel));
+                player.sendMessage(color("&e&l✦ &fYêu cầu: &6" + DF_MONEY.format(requiredMoney) + " coins"));
+            } else {
+                player.sendMessage(color("&a&l✦ &fBạn đã đạt cấp tối đa!"));
+            }
+        }
+
+        public class BreakthroughLevel {
+            private final int level;
+            private final double requiredMoney;
+            private final List<String> commands;
+            
+            public BreakthroughLevel(int level, double requiredMoney, List<String> commands) {
+                this.level = level;
+                this.requiredMoney = requiredMoney;
+                this.commands = commands;
+            }
+            
+            public int getLevel() { return level; }
+            public double getRequiredMoney() { return requiredMoney; }
+            public List<String> getCommands() { return commands; }
         }
     }
 
@@ -776,7 +890,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             if (item != null && breakthroughManager.isBreakthroughItem(item)) {
                 event.setCancelled(true);
                 breakthroughManager.performBreakthrough(event.getPlayer());
-                item.setAmount(item.getAmount() - 1);
             }
         }
     }
@@ -814,7 +927,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             switch (args[0].toLowerCase()) {
                 case "reload": return handleReload(sender);
                 case "givecoins": return handleGiveCoins(sender, args);
-                case "giveitem": return handleGiveItem(sender, args);
                 case "multiplier": return handleMultiplier(sender);
                 default: sendHelp(sender); return true;
             }
@@ -824,8 +936,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             sender.sendMessage(color("&6&lSchoolLevel &7- &fRPG Level System"));
             sender.sendMessage(color("&e/schoollevel reload &7- &fReload config"));
             sender.sendMessage(color("&e/schoollevel multiplier &7- &fCheck your multipliers"));
-            sender.sendMessage(color("&e/schoollevel giveitem <player> &7- &fGive breakthrough item"));
             sender.sendMessage(color("&e/schoollevel givecoins <player> <amount> &7- &fGive coins"));
+            sender.sendMessage(color("&e/schoollevelgivebreakthrough <player> <level> &7- &fGive breakthrough item"));
             sender.sendMessage(color("&e/profile &7- &fOpen profile menu"));
         }
 
@@ -852,6 +964,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             dataManager.reload();
             permissionManager.loadConfig();
             levelManager.reloadConfig();
+            breakthroughManager.loadBreakthroughConfig();
             
             for (Player player : Bukkit.getOnlinePlayers()) {
                 attributeManager.updateAttributes(player);
@@ -889,47 +1002,39 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
             return true;
         }
-
-        private boolean handleGiveItem(CommandSender sender, String[] args) {
-            if (!sender.hasPermission("schoollevel.admin")) {
-                sender.sendMessage(color("&cYou don't have permission!"));
-                return true;
-            }
-            if (args.length < 2) {
-                sender.sendMessage(color("&cUsage: /schoollevel giveitem <player>"));
-                return true;
-            }
-            Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) {
-                sender.sendMessage(color("&cPlayer not found!"));
-                return true;
-            }
-            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
-            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
-            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
-            return true;
-        }
     }
 
-    public class GiveItemCommand implements CommandExecutor {
+    public class GiveBreakthroughCommand implements CommandExecutor {
         @Override
         public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-            if (args.length < 1) {
-                sender.sendMessage(color("&cUsage: /schoollevelgiveitem <player>"));
+            if (args.length < 2) {
+                sender.sendMessage(color("&cUsage: /schoollevelgivebreakthrough <player> <level>"));
                 return true;
             }
+            
             if (!sender.hasPermission("schoollevel.admin")) {
                 sender.sendMessage(color("&cYou don't have permission!"));
                 return true;
             }
+            
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
                 sender.sendMessage(color("&cPlayer not found!"));
                 return true;
             }
-            target.getInventory().addItem(breakthroughManager.createBreakthroughItem());
-            sender.sendMessage(color("&a✅ Gave breakthrough item to " + target.getName()));
-            target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone&f!"));
+            
+            try {
+                int level = Integer.parseInt(args[1]);
+                if (!breakthroughManager.breakthroughLevels.containsKey(level)) {
+                    sender.sendMessage(color("&cInvalid breakthrough level! Available: " + breakthroughManager.breakthroughLevels.keySet()));
+                    return true;
+                }
+                target.getInventory().addItem(breakthroughManager.createBreakthroughItem(level));
+                sender.sendMessage(color("&a✅ Gave breakthrough item level " + level + " to " + target.getName()));
+                target.sendMessage(color("&6&l✦ &fYou received a &6Breakthrough Stone Level " + level + "&f!"));
+            } catch (NumberFormatException e) {
+                sender.sendMessage(color("&cInvalid level!"));
+            }
             return true;
         }
     }
@@ -1017,7 +1122,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     "&e&l⚠ Cần Đột Phá",
                     Arrays.asList(
                         "&7Bạn đã đạt &6Cấp 100",
-                        "&7Sử dụng &6Đá Đột Phá &7để lên Cấp 101"
+                        "&7Sử dụng &6Đá Đột Phá &7để lên Cấp cao hơn"
                     )));
             }
 

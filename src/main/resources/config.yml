@@ -4,6 +4,10 @@
 # ======================================================
 
 settings:
+  # Cấp tối đa cho phép
+  max-level: 500
+  
+  # Hệ số nhân XP mỗi cấp
   level-xp-multiplier: 1.1
   
   currency:
@@ -168,14 +172,35 @@ permission-multipliers:
 
 # ==================== BREAKTHROUGH ====================
 breakthrough:
-  bonus-money: 10000.0
+  levels:
+    200:
+      required-money: 10000.0
+      commands:
+        - "say &6&l✦ &f%player% &6đã đột phá lên cấp 200! 🎉"
+        - "effect give %player% minecraft:strength 60 2"
+    300:
+      required-money: 50000.0
+      commands:
+        - "say &6&l✦ &f%player% &6đã đột phá lên cấp 300! 🎉"
+        - "effect give %player% minecraft:strength 120 3"
+    400:
+      required-money: 200000.0
+      commands:
+        - "say &6&l✦ &f%player% &6đã đột phá lên cấp 400! 🎉"
+        - "effect give %player% minecraft:strength 180 4"
+    500:
+      required-money: 500000.0
+      commands:
+        - "say &6&l✦ &f%player% &6đã đột phá lên cấp 500! 🎉"
+        - "effect give %player% minecraft:strength 240 5"
+        - "effect give %player% minecraft:resistance 240 5"
 
 # ==================== MESSAGES ====================
 messages:
   level-up-chat: "&6&l⬆ &fBạn đã lên &6&lCấp %level%&f! &e✦"
   level-up-title: "&6&l⬆ LEVEL UP!"
   level-up-subtitle: "&fBạn đã đạt &6&lCấp %level%"
-  breakthrough: "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP 101 HUYỀN THOẠI! ✦"
+  breakthrough: "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP %level% HUYỀN THOẠI! ✦"
   no-permission: "&c❌ Bạn không có quyền sử dụng lệnh này!"
   player-not-found: "&c❌ Không tìm thấy người chơi!"
   breakthrough-already: "&c❌ Bạn đã đột phá rồi!"
@@ -185,5 +210,4 @@ messages:
 # ==================== COMMANDS ====================
 commands:
   level-up: []
-  breakthrough:
-    - "say &6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ GIỚI HẠN! &fCấp 101 HUYỀN THOẠI! ✨"
+  breakthrough: []

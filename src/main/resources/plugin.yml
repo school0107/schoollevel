@@ -14,11 +14,11 @@ commands:
     aliases: [schoollevelmenu]
   schoollevel:
     description: ⚙️ Quản lý SchoolLevel
-    usage: /schoollevel <reload|giveitem|givecoins|multiplier>
+    usage: /schoollevel <reload|givecoins|multiplier>
     permission: schoollevel.admin
-  schoollevelgiveitem:
+  schoollevelgivebreakthrough:
     description: 💎 Cấp Đá Đột Phá
-    usage: /schoollevelgiveitem <player>
+    usage: /schoollevelgivebreakthrough <player> <level>
     permission: schoollevel.admin
 
 permissions:
