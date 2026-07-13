@@ -63,6 +63,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private PermissionManager permissionManager;
     private HeartDisplayManager heartDisplayManager;
 
+    // Danh sách các mốc đột phá
+    private final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
+    private final Map<Integer, Boolean> breakthroughNotified = new HashMap<>();
+
     @Override
     public void onEnable() {
         long startTime = System.currentTimeMillis();
@@ -538,6 +542,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             private int blocksBroken = 0;
             private Set<Integer> brokenThroughLevels = new HashSet<>();
             private double money = 0;
+            private int lastBreakthroughNotify = -1;
 
             public PlayerData(UUID uuid) { this.uuid = uuid; }
 
@@ -569,6 +574,14 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             public void setBrokenThroughLevels(Set<Integer> levels) {
                 this.brokenThroughLevels = levels != null ? levels : new HashSet<>();
             }
+            
+            public int getLastBreakthroughNotify() {
+                return lastBreakthroughNotify;
+            }
+            
+            public void setLastBreakthroughNotify(int level) {
+                this.lastBreakthroughNotify = level;
+            }
         }
     }
 
@@ -576,13 +589,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public class LevelManager {
         private double xpMultiplier = 1.1;
         private int maxLevel = 500;
-        private int baseMaxLevel = 100;
-        private final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
         
         public void reloadConfig() {
             xpMultiplier = getConfig().getDouble("settings.level-xp-multiplier", 1.1);
             maxLevel = getConfig().getInt("settings.max-level", 500);
-            baseMaxLevel = getConfig().getInt("settings.base-max-level", 100);
         }
         
         public double getRequiredXP(int level) {
@@ -590,8 +600,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         public int getMaxLevel() { return maxLevel; }
-        public int getBaseMaxLevel() { return baseMaxLevel; }
         
+        // Lấy mốc đột phá tiếp theo
         public int getNextBreakthroughLevel(int currentLevel) {
             for (int level : BREAKTHROUGH_LEVELS) {
                 if (currentLevel < level) {
@@ -600,30 +610,51 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
             return -1;
         }
+        
+        // Lấy mốc đột phá hiện tại (đã vượt qua)
+        public int getCurrentBreakthroughLevel(int currentLevel) {
+            int result = 0;
+            for (int level : BREAKTHROUGH_LEVELS) {
+                if (currentLevel >= level) {
+                    result = level;
+                }
+            }
+            return result;
+        }
 
         public void addXP(Player player, double amount) {
             if (amount <= 0) return;
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int currentLevel = data.getLevel();
             
+            // Kiểm tra xem có đang ở mốc cần đột phá không (99, 199, 299, 399, 499)
             int nextBreakthrough = getNextBreakthroughLevel(currentLevel);
             
+            // Nếu đang ở level cần đột phá (level = mốc - 1)
             if (nextBreakthrough > 0 && currentLevel == nextBreakthrough - 1) {
+                // Kiểm tra đã đột phá mốc này chưa
                 if (!data.hasBrokenThrough(nextBreakthrough)) {
-                    breakthroughManager.notifyBreakthrough(player, nextBreakthrough);
-                    return;
+                    // Chỉ thông báo 1 lần cho mỗi mốc
+                    if (data.getLastBreakthroughNotify() != nextBreakthrough) {
+                        breakthroughManager.notifyBreakthrough(player, nextBreakthrough);
+                        data.setLastBreakthroughNotify(nextBreakthrough);
+                        dataManager.savePlayerData(player);
+                    }
+                    return; // Không nhận XP
                 }
             }
             
-            int effectiveMaxLevel = getEffectiveMaxLevel(data);
-            
-            if (currentLevel >= effectiveMaxLevel) {
-                player.sendMessage(color("&c❌ Bạn đã đạt cấp tối đa!"));
+            // Kiểm tra nếu đã đạt cấp tối đa
+            if (currentLevel >= maxLevel) {
                 return;
             }
 
             data.addXp(amount);
-            while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < effectiveMaxLevel) {
+            
+            // Kiểm tra level up, chỉ cho lên đến mốc đột phá tiếp theo - 1
+            int maxAllowedLevel = getMaxAllowedLevel(data);
+            
+            while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < maxAllowedLevel) {
                 data.setXp(data.getXp() - getRequiredXP(data.getLevel()));
                 levelUp(player);
             }
@@ -633,13 +664,27 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             updateVanillaXPBar(player);
         }
         
-        private int getEffectiveMaxLevel(DataManager.PlayerData data) {
-            if (data.hasBrokenThrough(500)) return 500;
-            if (data.hasBrokenThrough(400)) return 400;
-            if (data.hasBrokenThrough(300)) return 300;
-            if (data.hasBrokenThrough(200)) return 200;
-            if (data.hasBrokenThrough(100)) return 100;
-            return 99;
+        // Lấy level tối đa cho phép dựa trên đột phá
+        private int getMaxAllowedLevel(DataManager.PlayerData data) {
+            int currentLevel = data.getLevel();
+            int nextBreakthrough = getNextBreakthroughLevel(currentLevel);
+            
+            // Nếu có mốc đột phá tiếp theo, max là mốc đó - 1
+            if (nextBreakthrough > 0) {
+                // Nếu đã đột phá mốc này thì cho lên tiếp
+                if (data.hasBrokenThrough(nextBreakthrough)) {
+                    // Tìm mốc tiếp theo
+                    for (int level : BREAKTHROUGH_LEVELS) {
+                        if (level > nextBreakthrough && !data.hasBrokenThrough(level)) {
+                            return level - 1;
+                        }
+                    }
+                    return maxLevel; // Đã đột phá tất cả
+                }
+                return nextBreakthrough - 1;
+            }
+            
+            return maxLevel;
         }
 
         private void levelUp(Player player) {
@@ -648,6 +693,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             data.setLevel(newLevel);
             attributeManager.updateAttributes(player);
 
+            // Chỉ hiển thị title khi lên cấp (không spam chat)
             String title = getConfig().getString("messages.level-up-title", "&6&l⬆ LEVEL UP!");
             String subtitle = getConfig().getString("messages.level-up-subtitle", "&fBạn đã đạt &6Cấp %level%");
             title = color(title);
@@ -658,11 +704,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 Component.text(subtitle),
                 Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(2000), Duration.ofMillis(500))
             ));
-
-            String message = getConfig().getString("messages.level-up-chat",
-                "&6&l⬆ &fBạn đã lên &6Cấp %level%&f! &e✦")
-                .replace("%level%", String.valueOf(newLevel));
-            player.sendMessage(color(message));
         }
     }
 
@@ -680,7 +721,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             updateAttribute(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
             updateAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
             
-            // Cập nhật hiển thị tim
             heartDisplayManager.updateHeartDisplay(player);
         }
 
@@ -747,7 +787,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public class BreakthroughManager {
         private final NamespacedKey BREAKTHROUGH_KEY = new NamespacedKey(SchoolLevelPlugin.this, "breakthrough_item");
         private final Map<Integer, BreakthroughLevel> breakthroughLevels = new HashMap<>();
-        private final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
         
         public BreakthroughManager() {
             loadBreakthroughConfig();
@@ -772,25 +811,13 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
             
             if (breakthroughLevels.isEmpty()) {
-                breakthroughLevels.put(100, new BreakthroughLevel(100, 0, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 100! 🎉")));
-                breakthroughLevels.put(200, new BreakthroughLevel(200, 10000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 200! 🎉")));
-                breakthroughLevels.put(300, new BreakthroughLevel(300, 50000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 300! 🎉")));
-                breakthroughLevels.put(400, new BreakthroughLevel(400, 200000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 400! 🎉")));
-                breakthroughLevels.put(500, new BreakthroughLevel(500, 500000, Arrays.asList("say &6&l✦ &f%player% &6đã đột phá lên cấp 500! 🎉")));
+                breakthroughLevels.put(100, new BreakthroughLevel(100, 0, Arrays.asList()));
+                breakthroughLevels.put(200, new BreakthroughLevel(200, 10000, Arrays.asList()));
+                breakthroughLevels.put(300, new BreakthroughLevel(300, 50000, Arrays.asList()));
+                breakthroughLevels.put(400, new BreakthroughLevel(400, 200000, Arrays.asList()));
+                breakthroughLevels.put(500, new BreakthroughLevel(500, 500000, Arrays.asList()));
                 getLogger().info("✅ Using default breakthrough levels");
             }
-        }
-        
-        public BreakthroughLevel getNextBreakthroughLevel(Player player) {
-            DataManager.PlayerData data = dataManager.getPlayerData(player);
-            int currentLevel = data.getLevel();
-            
-            for (int level : BREAKTHROUGH_LEVELS) {
-                if (breakthroughLevels.containsKey(level) && !data.hasBrokenThrough(level) && currentLevel == level - 1) {
-                    return breakthroughLevels.get(level);
-                }
-            }
-            return null;
         }
         
         public ItemStack createBreakthroughItem(int targetLevel) {
@@ -864,6 +891,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
             data.addBrokenThrough(targetLevel);
             data.setLevel(targetLevel);
+            data.setLastBreakthroughNotify(-1); // Reset để có thể thông báo mốc tiếp theo
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
             
@@ -871,15 +899,19 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             player.sendMessage(color("&6&l🎉 &fBạn đã đột phá lên &6Cấp " + targetLevel + "&f!"));
             
+            // Broadcast 1 lần duy nhất
             String broadcast = getConfig().getString("messages.breakthrough",
                 "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP %level% HUYỀN THOẠI! ✦")
                 .replace("%player%", player.getName())
                 .replace("%level%", String.valueOf(targetLevel));
             Bukkit.broadcastMessage(color(broadcast));
             
+            // Chạy lệnh
             for (String cmd : bt.getCommands()) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
-                    cmd.replace("%player%", player.getName()).replace("%level%", String.valueOf(targetLevel)));
+                if (!cmd.isEmpty()) {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
+                        cmd.replace("%player%", player.getName()).replace("%level%", String.valueOf(targetLevel)));
+                }
             }
             
             player.getWorld().strikeLightningEffect(player.getLocation());
@@ -894,9 +926,15 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             if (bt == null) return;
             
             double requiredMoney = bt.getRequiredMoney();
+            
+            // Chỉ gửi 1 lần duy nhất, không spam
             player.sendMessage(color("&e&l✦ &fBạn đã đạt &6Cấp " + (targetLevel - 1) + "&f!"));
             player.sendMessage(color("&e&l✦ &fSử dụng &6Đá Đột Phá Cấp " + targetLevel + " &fđể lên &6Cấp " + targetLevel));
-            player.sendMessage(color("&e&l✦ &fYêu cầu: &6" + DF_MONEY.format(requiredMoney) + " coins"));
+            if (requiredMoney > 0) {
+                player.sendMessage(color("&e&l✦ &fYêu cầu: &6" + DF_MONEY.format(requiredMoney) + " coins"));
+            } else {
+                player.sendMessage(color("&e&l✦ &fYêu cầu: &6Miễn phí"));
+            }
         }
 
         public class BreakthroughLevel {
@@ -938,13 +976,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         heartDisplayManager.updateHeartDisplay(player);
         updateVanillaXPBar(player);
         
-        if (data.getLevel() >= 100 && !data.hasBrokenThrough(100)) {
-            data.setLevel(99);
-            data.setXp(0);
-            attributeManager.updateAttributes(player);
-            dataManager.savePlayerData(player);
-            player.sendMessage(color("&c⚠ &fBạn đã bị hạ xuống &6Cấp 99 &fvì chưa đột phá!"));
-        }
+        // Reset thông báo đột phá khi join
+        data.setLastBreakthroughNotify(-1);
     }
 
     @EventHandler
@@ -1038,6 +1071,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             heartDisplayManager.loadConfig();
             
             for (Player player : Bukkit.getOnlinePlayers()) {
+                DataManager.PlayerData data = dataManager.getPlayerData(player);
+                data.setLastBreakthroughNotify(-1);
                 attributeManager.updateAttributes(player);
                 heartDisplayManager.updateHeartDisplay(player);
                 updateVanillaXPBar(player);
@@ -1102,21 +1137,13 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 DataManager.PlayerData data = dataManager.getPlayerData(target);
                 data.setLevel(level);
                 data.setXp(0);
+                data.setLastBreakthroughNotify(-1);
                 
-                if (level >= 100 && !data.hasBrokenThrough(100)) {
-                    data.addBrokenThrough(100);
-                }
-                if (level >= 200 && !data.hasBrokenThrough(200)) {
-                    data.addBrokenThrough(200);
-                }
-                if (level >= 300 && !data.hasBrokenThrough(300)) {
-                    data.addBrokenThrough(300);
-                }
-                if (level >= 400 && !data.hasBrokenThrough(400)) {
-                    data.addBrokenThrough(400);
-                }
-                if (level >= 500 && !data.hasBrokenThrough(500)) {
-                    data.addBrokenThrough(500);
+                // Tự động đánh dấu đã đột phá các mốc đã vượt qua
+                for (int btLevel : BREAKTHROUGH_LEVELS) {
+                    if (level >= btLevel && !data.hasBrokenThrough(btLevel)) {
+                        data.addBrokenThrough(btLevel);
+                    }
                 }
                 
                 attributeManager.updateAttributes(target);
@@ -1238,17 +1265,22 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 "&e&l⌛ Thời gian online",
                 Arrays.asList("&7Tổng thời gian: &e" + minutes + " &ephút")));
 
+            // Hiển thị trạng thái đột phá
             String breakthroughStatus = "&c❌ Chưa đột phá";
+            int nextBT = levelManager.getNextBreakthroughLevel(level);
+            
             if (data.hasBrokenThrough(500)) {
                 breakthroughStatus = "&6✦ Cấp 500 (Tối đa)";
             } else if (data.hasBrokenThrough(400)) {
-                breakthroughStatus = "&6✦ Cấp 400";
+                breakthroughStatus = "&6✦ Đã đột phá cấp 400, mục tiêu tiếp theo: &6Cấp 500";
             } else if (data.hasBrokenThrough(300)) {
-                breakthroughStatus = "&6✦ Cấp 300";
+                breakthroughStatus = "&6✦ Đã đột phá cấp 300, mục tiêu tiếp theo: &6Cấp 400";
             } else if (data.hasBrokenThrough(200)) {
-                breakthroughStatus = "&6✦ Cấp 200";
+                breakthroughStatus = "&6✦ Đã đột phá cấp 200, mục tiêu tiếp theo: &6Cấp 300";
             } else if (data.hasBrokenThrough(100)) {
-                breakthroughStatus = "&6✦ Cấp 100";
+                breakthroughStatus = "&6✦ Đã đột phá cấp 100, mục tiêu tiếp theo: &6Cấp 200";
+            } else if (level >= 99 && nextBT > 0) {
+                breakthroughStatus = "&e⚠ Cần đột phá lên &6Cấp " + nextBT;
             }
             
             inventory.setItem(49, createInfoItem(Material.NETHER_STAR,
