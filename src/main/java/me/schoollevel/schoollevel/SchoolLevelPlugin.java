@@ -62,8 +62,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private ConfigManager configManager;
     private PermissionManager permissionManager;
     private HeartDisplayManager heartDisplayManager;
-    
-    // PlaceholderAPI Expansion
     private PlaceholderHook placeholderHook;
 
     public final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
@@ -94,10 +92,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         registerCommands();
         getServer().getPluginManager().registerEvents(this, this);
-        
-        // Đăng ký PlaceholderAPI
         registerPlaceholderAPI();
-        
         startScheduledTasks();
 
         getLogger().info("§a✅ SchoolLevel Plugin enabled! (Took " + (System.currentTimeMillis() - startTime) + "ms)");
@@ -136,8 +131,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             placeholderHook.register();
             placeholderHook.loadLevelColors();
             getLogger().info("✅ PlaceholderAPI registered successfully!");
-        } else {
-            getLogger().warning("⚠️ PlaceholderAPI not found! Placeholders will not work.");
         }
     }
 
@@ -827,28 +820,89 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private static final String HEALTH_MODIFIER = "schoollevel_health";
         private static final String DAMAGE_MODIFIER = "schoollevel_damage";
         private static final String SPEED_MODIFIER = "schoollevel_speed";
+        
+        private final Map<UUID, Double> lastAppliedLevel = new HashMap<>();
 
         public void updateAttributes(Player player) {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int level = data.getLevel();
+            UUID uuid = player.getUniqueId();
+            
+            // Kiểm tra nếu level đã được áp dụng trước đó
+            Double previousLevel = lastAppliedLevel.get(uuid);
+            
+            // Nếu level thấp hơn hoặc bằng level đã áp dụng, không cập nhật (tránh cộng dồn)
+            if (previousLevel != null && level <= previousLevel) {
+                // Vẫn cập nhật hiển thị tim
+                heartDisplayManager.updateHeartDisplay(player);
+                return;
+            }
+            
+            // Xóa modifier cũ trước khi thêm mới
+            removeAllModifiers(player);
+            
+            // Tính bonus dựa trên level
             double bonus = level * 0.01;
-            updateAttribute(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
-            updateAttribute(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
-            updateAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
+            
+            // Áp dụng modifier mới
+            applyModifier(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
+            applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
+            applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
+            
+            // Lưu level đã áp dụng
+            lastAppliedLevel.put(uuid, (double) level);
             
             heartDisplayManager.updateHeartDisplay(player);
         }
-
-        private void updateAttribute(Player player, Attribute attribute, String modifierName, double amount) {
+        
+        private void removeAllModifiers(Player player) {
+            removeModifier(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER);
+            removeModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER);
+            removeModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER);
+        }
+        
+        private void removeModifier(Player player, Attribute attribute, String modifierName) {
             AttributeInstance instance = player.getAttribute(attribute);
             if (instance == null) return;
+            
             instance.getModifiers().stream()
                 .filter(mod -> mod.getKey() != null && mod.getKey().getKey().equals(modifierName))
                 .forEach(instance::removeModifier);
+        }
+        
+        private void applyModifier(Player player, Attribute attribute, String modifierName, double amount) {
+            AttributeInstance instance = player.getAttribute(attribute);
+            if (instance == null) return;
+            
             if (amount > 0.001) {
                 NamespacedKey key = new NamespacedKey(SchoolLevelPlugin.this, modifierName);
                 instance.addModifier(new AttributeModifier(key, amount, AttributeModifier.Operation.ADD_NUMBER));
             }
+        }
+        
+        // Tính phần trăm thuộc tính đã tăng
+        public double getHealthBonusPercent(int level) {
+            return level * 0.01 * 100; // Trả về %
+        }
+        
+        public double getDamageBonusPercent(int level) {
+            return level * 0.01 * 100;
+        }
+        
+        public double getSpeedBonusPercent(int level) {
+            return level * 0.01 * 100;
+        }
+        
+        public double getBaseHealth() {
+            return 20.0;
+        }
+        
+        public double getBaseDamage() {
+            return 1.0;
+        }
+        
+        public double getBaseSpeed() {
+            return 0.1;
         }
     }
 
@@ -1007,6 +1061,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             data.addBrokenThrough(targetLevel);
             data.setLevel(targetLevel);
             data.setLastBreakthroughNotify(-1);
+            
+            // Cập nhật lại attributes để áp dụng level mới
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
             
@@ -1084,6 +1140,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         DataManager.PlayerData data = dataManager.getPlayerData(player);
+        
+        // Reset và cập nhật attributes khi join
+        attributeManager.lastAppliedLevel.remove(player.getUniqueId());
         attributeManager.updateAttributes(player);
         heartDisplayManager.updateHeartDisplay(player);
         updateVanillaXPBar(player);
@@ -1185,9 +1244,13 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 placeholderHook.loadLevelColors();
             }
             
+            // Reset attributes cho tất cả player online
             for (Player player : Bukkit.getOnlinePlayers()) {
                 DataManager.PlayerData data = dataManager.getPlayerData(player);
                 data.setLastBreakthroughNotify(-1);
+                
+                // Xóa cache attribute để cập nhật lại
+                attributeManager.lastAppliedLevel.remove(player.getUniqueId());
                 attributeManager.updateAttributes(player);
                 heartDisplayManager.updateHeartDisplay(player);
                 updateVanillaXPBar(player);
@@ -1260,6 +1323,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     }
                 }
                 
+                // Reset và cập nhật attributes
+                attributeManager.lastAppliedLevel.remove(target.getUniqueId());
                 attributeManager.updateAttributes(target);
                 dataManager.savePlayerData(target);
                 updateVanillaXPBar(target);
@@ -1342,6 +1407,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double xp = data.getXp();
             double required = levelManager.getRequiredXP(level);
             double money = data.getMoney();
+            
+            // Tính phần trăm thuộc tính đã tăng
+            double healthBonus = attributeManager.getHealthBonusPercent(level);
+            double damageBonus = attributeManager.getDamageBonusPercent(level);
+            double speedBonus = attributeManager.getSpeedBonusPercent(level);
 
             inventory.setItem(20, createInfoItem(Material.EXPERIENCE_BOTTLE,
                 "&6&l⚡ Cấp độ",
@@ -1355,16 +1425,23 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 "&c&l❤ Máu tối đa",
                 Arrays.asList(
                     "&7Lượng máu: &c" + DF.format(health),
-                    "&7Trái tim: &c" + DF.format(health / 2) + " &c❤"
+                    "&7Trái tim: &c" + DF.format(health / 2) + " &c❤",
+                    "&7Đã tăng: &a+" + DF.format(healthBonus) + "%"
                 )));
 
             inventory.setItem(24, createInfoItem(Material.DIAMOND_SWORD,
                 "&6&l⚔ Sát thương",
-                Arrays.asList("&7Sát thương: &6" + DF.format(damage))));
+                Arrays.asList(
+                    "&7Sát thương: &6" + DF.format(damage),
+                    "&7Đã tăng: &a+" + DF.format(damageBonus) + "%"
+                )));
 
             inventory.setItem(29, createInfoItem(Material.FEATHER,
                 "&b&l✦ Tốc độ",
-                Arrays.asList("&7Tốc độ: &b" + DF.format(speed * 1000) + " &b%")));
+                Arrays.asList(
+                    "&7Tốc độ: &b" + DF.format(speed * 1000) + " &b%",
+                    "&7Đã tăng: &a+" + DF.format(speedBonus) + "%"
+                )));
 
             inventory.setItem(31, createInfoItem(Material.DIAMOND_PICKAXE,
                 "&a&l⛏ Block đã đào",
