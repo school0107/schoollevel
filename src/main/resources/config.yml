@@ -179,6 +179,36 @@ permission-multipliers:
     "schoollevel.money.4": 4.0
     "schoollevel.money.5": 5.0
 
+    
+level-colors:
+  500:
+    color: "&#FFD700"
+    name: "&6&lHuyền Thoại"
+    symbol: "✦"
+  400:
+    color: "&#9B59B6"
+    name: "&d&lThần Thánh"
+    symbol: "✦"
+  300:
+    color: "&#E74C3C"
+    name: "&c&lAnh Hùng"
+    symbol: "✦"
+  200:
+    color: "&#3498DB"
+    name: "&b&lThạc Sĩ"
+    symbol: "✦"
+  100:
+    color: "&#2ECC71"
+    name: "&a&lCử Nhân"
+    symbol: "✦"
+  50:
+    color: "&#F1C40F"
+    name: "&e&lHọc Viên"
+    symbol: "✦"
+  0:
+    color: "&#95A5A6"
+    name: "&7&lTân Binh"
+    symbol: "✦"
 # ==================== BREAKTHROUGH ====================
 breakthrough:
   levels:
@@ -203,6 +233,7 @@ breakthrough:
         - "say &6&l✦ &f%player% &6đã đột phá lên cấp 500! 🎉"
         - "effect give %player% minecraft:strength 240 5"
         - "effect give %player% minecraft:resistance 240 5"
+
 
 # ==================== MESSAGES ====================
 messages:

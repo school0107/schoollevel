@@ -64,8 +64,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private HeartDisplayManager heartDisplayManager;
 
     // Danh sách các mốc đột phá
-    private final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
-    private final Map<Integer, Boolean> breakthroughNotified = new HashMap<>();
+    public final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
 
     @Override
     public void onEnable() {
@@ -296,6 +295,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
     // ==================== PLACEHOLDER API HOOK ====================
     public class PlaceholderHook extends me.clip.placeholderapi.expansion.PlaceholderExpansion {
+        private final Map<Integer, LevelColor> levelColors = new HashMap<>();
+        
         @Override 
         public String getIdentifier() { 
             return "schoollevel"; 
@@ -309,6 +310,33 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         @Override 
         public String getVersion() { 
             return "1.0"; 
+        }
+        
+        public void loadLevelColors() {
+            levelColors.clear();
+            FileConfiguration config = getConfig();
+            
+            if (config.contains("level-colors")) {
+                for (String key : config.getConfigurationSection("level-colors").getKeys(false)) {
+                    try {
+                        int level = Integer.parseInt(key);
+                        String color = config.getString("level-colors." + key + ".color", "&#FFFFFF");
+                        String name = config.getString("level-colors." + key + ".name", "&7&l");
+                        String symbol = config.getString("level-colors." + key + ".symbol", "✦");
+                        levelColors.put(level, new LevelColor(color, name, symbol));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            
+            if (levelColors.isEmpty()) {
+                levelColors.put(500, new LevelColor("&#FFD700", "&6&lHuyền Thoại", "✦"));
+                levelColors.put(400, new LevelColor("&#9B59B6", "&d&lThần Thánh", "✦"));
+                levelColors.put(300, new LevelColor("&#E74C3C", "&c&lAnh Hùng", "✦"));
+                levelColors.put(200, new LevelColor("&#3498DB", "&b&lThạc Sĩ", "✦"));
+                levelColors.put(100, new LevelColor("&#2ECC71", "&a&lCử Nhân", "✦"));
+                levelColors.put(50, new LevelColor("&#F1C40F", "&e&lHọc Viên", "✦"));
+                levelColors.put(0, new LevelColor("&#95A5A6", "&7&lTân Binh", "✦"));
+            }
         }
 
         @Override
@@ -325,21 +353,118 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
             
             switch (params.toLowerCase()) {
-                case "level": return String.valueOf(data.getLevel());
-                case "level_formatted": return color("&6✦" + data.getLevel());
-                case "xp": return DF.format(data.getXp());
-                case "required_xp": return DF.format(levelManager.getRequiredXP(data.getLevel()));
-                case "xp_progress": return DF.format((data.getXp() / levelManager.getRequiredXP(data.getLevel())) * 100);
-                case "blocks_broken": return String.valueOf(data.getBlocksBroken());
-                case "minutes_online": return String.valueOf(player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60);
-                case "health": return DF.format(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
-                case "damage": return DF.format(player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue());
-                case "armor": return DF.format(player.getAttribute(Attribute.GENERIC_ARMOR).getValue());
-                case "speed": return DF.format(player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * 1000);
-                case "money": return DF_MONEY.format(money);
-                case "money_formatted": return configManager.formatMoney(money);
-                default: return "";
+                case "level": 
+                    return String.valueOf(data.getLevel());
+                    
+                case "level_formatted": 
+                    return getColoredLevel(data.getLevel());
+                    
+                case "level_color":
+                    return getLevelColor(data.getLevel());
+                    
+                case "level_rgb":
+                    return getLevelRGB(data.getLevel());
+                    
+                case "level_name":
+                    return getLevelName(data.getLevel());
+                    
+                case "level_symbol":
+                    return getLevelSymbol(data.getLevel());
+                    
+                case "level_full":
+                    return getLevelFullDisplay(data.getLevel());
+                    
+                case "xp": 
+                    return DF.format(data.getXp());
+                    
+                case "required_xp": 
+                    return DF.format(levelManager.getRequiredXP(data.getLevel()));
+                    
+                case "xp_progress": 
+                    return DF.format((data.getXp() / levelManager.getRequiredXP(data.getLevel())) * 100);
+                    
+                case "blocks_broken": 
+                    return String.valueOf(data.getBlocksBroken());
+                    
+                case "minutes_online": 
+                    return String.valueOf(player.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20 / 60);
+                    
+                case "health": 
+                    return DF.format(player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+                    
+                case "damage": 
+                    return DF.format(player.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).getValue());
+                    
+                case "armor": 
+                    return DF.format(player.getAttribute(Attribute.GENERIC_ARMOR).getValue());
+                    
+                case "speed": 
+                    return DF.format(player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getValue() * 1000);
+                    
+                case "money": 
+                    return DF_MONEY.format(money);
+                    
+                case "money_formatted": 
+                    return configManager.formatMoney(money);
+                    
+                default: 
+                    return "";
             }
+        }
+        
+        private LevelColor getLevelColorData(int level) {
+            LevelColor result = levelColors.get(0);
+            for (Map.Entry<Integer, LevelColor> entry : levelColors.entrySet()) {
+                if (level >= entry.getKey() && entry.getKey() > 0) {
+                    result = entry.getValue();
+                }
+            }
+            return result;
+        }
+        
+        private String getLevelColor(int level) {
+            return getLevelColorData(level).getColor();
+        }
+        
+        private String getLevelRGB(int level) {
+            return getLevelColorData(level).getRgb();
+        }
+        
+        private String getLevelName(int level) {
+            return getLevelColorData(level).getName();
+        }
+        
+        private String getLevelSymbol(int level) {
+            return getLevelColorData(level).getSymbol();
+        }
+        
+        private String getColoredLevel(int level) {
+            LevelColor lc = getLevelColorData(level);
+            return lc.getColor() + lc.getSymbol() + level;
+        }
+        
+        private String getLevelFullDisplay(int level) {
+            LevelColor lc = getLevelColorData(level);
+            return lc.getColor() + lc.getSymbol() + " " + lc.getName() + " Cấp " + level;
+        }
+        
+        public class LevelColor {
+            private final String rgb;
+            private final String color;
+            private final String name;
+            private final String symbol;
+            
+            public LevelColor(String rgb, String color, String symbol) {
+                this.rgb = rgb;
+                this.color = color;
+                this.name = color + name;
+                this.symbol = symbol;
+            }
+            
+            public String getRgb() { return rgb; }
+            public String getColor() { return color; }
+            public String getName() { return name; }
+            public String getSymbol() { return symbol; }
         }
     }
 
@@ -601,7 +726,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         public int getMaxLevel() { return maxLevel; }
         
-        // Lấy mốc đột phá tiếp theo
         public int getNextBreakthroughLevel(int currentLevel) {
             for (int level : BREAKTHROUGH_LEVELS) {
                 if (currentLevel < level) {
@@ -610,48 +734,31 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
             return -1;
         }
-        
-        // Lấy mốc đột phá hiện tại (đã vượt qua)
-        public int getCurrentBreakthroughLevel(int currentLevel) {
-            int result = 0;
-            for (int level : BREAKTHROUGH_LEVELS) {
-                if (currentLevel >= level) {
-                    result = level;
-                }
-            }
-            return result;
-        }
 
         public void addXP(Player player, double amount) {
             if (amount <= 0) return;
             DataManager.PlayerData data = dataManager.getPlayerData(player);
             int currentLevel = data.getLevel();
             
-            // Kiểm tra xem có đang ở mốc cần đột phá không (99, 199, 299, 399, 499)
             int nextBreakthrough = getNextBreakthroughLevel(currentLevel);
             
-            // Nếu đang ở level cần đột phá (level = mốc - 1)
             if (nextBreakthrough > 0 && currentLevel == nextBreakthrough - 1) {
-                // Kiểm tra đã đột phá mốc này chưa
                 if (!data.hasBrokenThrough(nextBreakthrough)) {
-                    // Chỉ thông báo 1 lần cho mỗi mốc
                     if (data.getLastBreakthroughNotify() != nextBreakthrough) {
                         breakthroughManager.notifyBreakthrough(player, nextBreakthrough);
                         data.setLastBreakthroughNotify(nextBreakthrough);
                         dataManager.savePlayerData(player);
                     }
-                    return; // Không nhận XP
+                    return;
                 }
             }
             
-            // Kiểm tra nếu đã đạt cấp tối đa
             if (currentLevel >= maxLevel) {
                 return;
             }
 
             data.addXp(amount);
             
-            // Kiểm tra level up, chỉ cho lên đến mốc đột phá tiếp theo - 1
             int maxAllowedLevel = getMaxAllowedLevel(data);
             
             while (data.getXp() >= getRequiredXP(data.getLevel()) && data.getLevel() < maxAllowedLevel) {
@@ -664,22 +771,18 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             updateVanillaXPBar(player);
         }
         
-        // Lấy level tối đa cho phép dựa trên đột phá
         private int getMaxAllowedLevel(DataManager.PlayerData data) {
             int currentLevel = data.getLevel();
             int nextBreakthrough = getNextBreakthroughLevel(currentLevel);
             
-            // Nếu có mốc đột phá tiếp theo, max là mốc đó - 1
             if (nextBreakthrough > 0) {
-                // Nếu đã đột phá mốc này thì cho lên tiếp
                 if (data.hasBrokenThrough(nextBreakthrough)) {
-                    // Tìm mốc tiếp theo
                     for (int level : BREAKTHROUGH_LEVELS) {
                         if (level > nextBreakthrough && !data.hasBrokenThrough(level)) {
                             return level - 1;
                         }
                     }
-                    return maxLevel; // Đã đột phá tất cả
+                    return maxLevel;
                 }
                 return nextBreakthrough - 1;
             }
@@ -693,7 +796,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             data.setLevel(newLevel);
             attributeManager.updateAttributes(player);
 
-            // Chỉ hiển thị title khi lên cấp (không spam chat)
             String title = getConfig().getString("messages.level-up-title", "&6&l⬆ LEVEL UP!");
             String subtitle = getConfig().getString("messages.level-up-subtitle", "&fBạn đã đạt &6Cấp %level%");
             title = color(title);
@@ -891,7 +993,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
             data.addBrokenThrough(targetLevel);
             data.setLevel(targetLevel);
-            data.setLastBreakthroughNotify(-1); // Reset để có thể thông báo mốc tiếp theo
+            data.setLastBreakthroughNotify(-1);
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
             
@@ -899,14 +1001,12 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             player.sendMessage(color("&6&l🎉 &fBạn đã đột phá lên &6Cấp " + targetLevel + "&f!"));
             
-            // Broadcast 1 lần duy nhất
             String broadcast = getConfig().getString("messages.breakthrough",
                 "&6&l✦ &f%player% &6&lĐÃ ĐỘT PHÁ LÊN CẤP %level% HUYỀN THOẠI! ✦")
                 .replace("%player%", player.getName())
                 .replace("%level%", String.valueOf(targetLevel));
             Bukkit.broadcastMessage(color(broadcast));
             
-            // Chạy lệnh
             for (String cmd : bt.getCommands()) {
                 if (!cmd.isEmpty()) {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), 
@@ -927,7 +1027,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             double requiredMoney = bt.getRequiredMoney();
             
-            // Chỉ gửi 1 lần duy nhất, không spam
             player.sendMessage(color("&e&l✦ &fBạn đã đạt &6Cấp " + (targetLevel - 1) + "&f!"));
             player.sendMessage(color("&e&l✦ &fSử dụng &6Đá Đột Phá Cấp " + targetLevel + " &fđể lên &6Cấp " + targetLevel));
             if (requiredMoney > 0) {
@@ -976,7 +1075,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         heartDisplayManager.updateHeartDisplay(player);
         updateVanillaXPBar(player);
         
-        // Reset thông báo đột phá khi join
         data.setLastBreakthroughNotify(-1);
     }
 
@@ -1070,6 +1168,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             breakthroughManager.loadBreakthroughConfig();
             heartDisplayManager.loadConfig();
             
+            // Reload PlaceholderAPI colors
+            if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                new PlaceholderHook().loadLevelColors();
+            }
+            
             for (Player player : Bukkit.getOnlinePlayers()) {
                 DataManager.PlayerData data = dataManager.getPlayerData(player);
                 data.setLastBreakthroughNotify(-1);
@@ -1139,7 +1242,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 data.setXp(0);
                 data.setLastBreakthroughNotify(-1);
                 
-                // Tự động đánh dấu đã đột phá các mốc đã vượt qua
                 for (int btLevel : BREAKTHROUGH_LEVELS) {
                     if (level >= btLevel && !data.hasBrokenThrough(btLevel)) {
                         data.addBrokenThrough(btLevel);
@@ -1265,7 +1367,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 "&e&l⌛ Thời gian online",
                 Arrays.asList("&7Tổng thời gian: &e" + minutes + " &ephút")));
 
-            // Hiển thị trạng thái đột phá
             String breakthroughStatus = "&c❌ Chưa đột phá";
             int nextBT = levelManager.getNextBreakthroughLevel(level);
             
