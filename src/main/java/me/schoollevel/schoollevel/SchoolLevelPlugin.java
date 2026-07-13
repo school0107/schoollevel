@@ -63,7 +63,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private PermissionManager permissionManager;
     private HeartDisplayManager heartDisplayManager;
 
-    // Danh sách các mốc đột phá
     public final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
 
     @Override
@@ -133,7 +132,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     }
 
     private void startScheduledTasks() {
-        // Action bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -143,10 +141,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
         }.runTaskTimer(this, 0, ACTION_BAR_INTERVAL);
         
-        // Heart display updater
         heartDisplayManager.startHeartUpdateTask();
         
-        // XP bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -167,7 +163,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         player.setExp((float) Math.min(xp / required, 1.0));
     }
 
-    // ==================== ACTION BAR DISPLAY ====================
     private void updateAllActionBars() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             updatePlayerActionBar(player);
@@ -320,10 +315,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 for (String key : config.getConfigurationSection("level-colors").getKeys(false)) {
                     try {
                         int level = Integer.parseInt(key);
-                        String color = config.getString("level-colors." + key + ".color", "&#FFFFFF");
-                        String name = config.getString("level-colors." + key + ".name", "&7&l");
+                        String rgb = config.getString("level-colors." + key + ".color", "&#FFFFFF");
+                        String displayName = config.getString("level-colors." + key + ".name", "&7&l");
                         String symbol = config.getString("level-colors." + key + ".symbol", "✦");
-                        levelColors.put(level, new LevelColor(color, name, symbol));
+                        levelColors.put(level, new LevelColor(rgb, displayName, symbol));
                     } catch (NumberFormatException ignored) {}
                 }
             }
@@ -454,10 +449,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             private final String name;
             private final String symbol;
             
-            public LevelColor(String rgb, String color, String symbol) {
+            public LevelColor(String rgb, String displayName, String symbol) {
                 this.rgb = rgb;
-                this.color = color;
-                this.name = color + name;
+                this.color = displayName;
+                this.name = ChatColor.stripColor(org.bukkit.ChatColor.translateAlternateColorCodes('&', displayName));
                 this.symbol = symbol;
             }
             
@@ -1168,7 +1163,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             breakthroughManager.loadBreakthroughConfig();
             heartDisplayManager.loadConfig();
             
-            // Reload PlaceholderAPI colors
             if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
                 new PlaceholderHook().loadLevelColors();
             }
