@@ -20,6 +20,12 @@ commands:
     description: 💎 Cấp Đá Đột Phá
     usage: /schoollevelgivebreakthrough <player> <level>
     permission: schoollevel.admin
+  
+  # ===== PARTY COMMANDS =====
+  party:
+    description: 📋 Quản lý Party
+    usage: /party <create|invite|accept|leave|disband|kick|list>
+    aliases: [p]
 
 permissions:
   schoollevel.admin:
