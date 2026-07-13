@@ -62,6 +62,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private ConfigManager configManager;
     private PermissionManager permissionManager;
     private HeartDisplayManager heartDisplayManager;
+    
+    // PlaceholderAPI Expansion
+    private PlaceholderHook placeholderHook;
 
     public final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
 
@@ -91,7 +94,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
         registerCommands();
         getServer().getPluginManager().registerEvents(this, this);
+        
+        // Đăng ký PlaceholderAPI
         registerPlaceholderAPI();
+        
         startScheduledTasks();
 
         getLogger().info("§a✅ SchoolLevel Plugin enabled! (Took " + (System.currentTimeMillis() - startTime) + "ms)");
@@ -126,8 +132,12 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
     private void registerPlaceholderAPI() {
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PlaceholderHook().register();
-            getLogger().info("✅ PlaceholderAPI registered!");
+            placeholderHook = new PlaceholderHook();
+            placeholderHook.register();
+            placeholderHook.loadLevelColors();
+            getLogger().info("✅ PlaceholderAPI registered successfully!");
+        } else {
+            getLogger().warning("⚠️ PlaceholderAPI not found! Placeholders will not work.");
         }
     }
 
@@ -217,6 +227,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public ConfigManager getConfigManager() { return configManager; }
     public PermissionManager getPermissionManager() { return permissionManager; }
     public HeartDisplayManager getHeartDisplayManager() { return heartDisplayManager; }
+    public PlaceholderHook getPlaceholderHook() { return placeholderHook; }
     public net.milkbowl.vault.economy.Economy getEconomy() { return economy; }
     public boolean hasEconomy() { return economy != null; }
 
@@ -307,6 +318,11 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             return "1.0"; 
         }
         
+        @Override
+        public boolean canRegister() {
+            return true;
+        }
+        
         public void loadLevelColors() {
             levelColors.clear();
             FileConfiguration config = getConfig();
@@ -347,7 +363,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 money = data.getMoney();
             }
             
-            switch (params.toLowerCase()) {
+            String param = params.toLowerCase();
+            
+            switch (param) {
                 case "level": 
                     return String.valueOf(data.getLevel());
                     
@@ -1163,8 +1181,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             breakthroughManager.loadBreakthroughConfig();
             heartDisplayManager.loadConfig();
             
-            if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-                new PlaceholderHook().loadLevelColors();
+            if (placeholderHook != null) {
+                placeholderHook.loadLevelColors();
             }
             
             for (Player player : Bukkit.getOnlinePlayers()) {
