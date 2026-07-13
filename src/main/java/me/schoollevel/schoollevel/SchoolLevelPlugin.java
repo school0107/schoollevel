@@ -62,6 +62,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     private ConfigManager configManager;
     private PermissionManager permissionManager;
     private HeartDisplayManager heartDisplayManager;
+    private PartyManager partyManager;
     private PlaceholderHook placeholderHook;
 
     public final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
@@ -89,6 +90,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         breakthroughManager = new BreakthroughManager();
         permissionManager = new PermissionManager();
         heartDisplayManager = new HeartDisplayManager(this);
+        partyManager = new PartyManager(this);
 
         registerCommands();
         getServer().getPluginManager().registerEvents(this, this);
@@ -123,6 +125,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         Objects.requireNonNull(getCommand("profile")).setExecutor(new ProfileCommand());
         Objects.requireNonNull(getCommand("schoollevel")).setExecutor(new SchoolLevelCommand());
         Objects.requireNonNull(getCommand("schoollevelgivebreakthrough")).setExecutor(new GiveBreakthroughCommand());
+        Objects.requireNonNull(getCommand("party")).setExecutor(new PartyCommand());
     }
 
     private void registerPlaceholderAPI() {
@@ -220,6 +223,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     public ConfigManager getConfigManager() { return configManager; }
     public PermissionManager getPermissionManager() { return permissionManager; }
     public HeartDisplayManager getHeartDisplayManager() { return heartDisplayManager; }
+    public PartyManager getPartyManager() { return partyManager; }
     public PlaceholderHook getPlaceholderHook() { return placeholderHook; }
     public net.milkbowl.vault.economy.Economy getEconomy() { return economy; }
     public boolean hasEconomy() { return economy != null; }
@@ -828,30 +832,22 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             int level = data.getLevel();
             UUID uuid = player.getUniqueId();
             
-            // Kiểm tra nếu level đã được áp dụng trước đó
             Double previousLevel = lastAppliedLevel.get(uuid);
             
-            // Nếu level thấp hơn hoặc bằng level đã áp dụng, không cập nhật (tránh cộng dồn)
             if (previousLevel != null && level <= previousLevel) {
-                // Vẫn cập nhật hiển thị tim
                 heartDisplayManager.updateHeartDisplay(player);
                 return;
             }
             
-            // Xóa modifier cũ trước khi thêm mới
             removeAllModifiers(player);
             
-            // Tính bonus dựa trên level
             double bonus = level * 0.01;
             
-            // Áp dụng modifier mới
             applyModifier(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
             applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
             applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
             
-            // Lưu level đã áp dụng
             lastAppliedLevel.put(uuid, (double) level);
-            
             heartDisplayManager.updateHeartDisplay(player);
         }
         
@@ -880,9 +876,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
         }
         
-        // Tính phần trăm thuộc tính đã tăng
         public double getHealthBonusPercent(int level) {
-            return level * 0.01 * 100; // Trả về %
+            return level * 0.01 * 100;
         }
         
         public double getDamageBonusPercent(int level) {
@@ -891,18 +886,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         
         public double getSpeedBonusPercent(int level) {
             return level * 0.01 * 100;
-        }
-        
-        public double getBaseHealth() {
-            return 20.0;
-        }
-        
-        public double getBaseDamage() {
-            return 1.0;
-        }
-        
-        public double getBaseSpeed() {
-            return 0.1;
         }
     }
 
@@ -913,7 +896,13 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             if (xp > 0) {
                 double multiplier = permissionManager.getXPMultiplier(player);
                 xp = xp * multiplier;
-                levelManager.addXP(player, xp);
+                
+                if (partyManager.isInParty(player)) {
+                    partyManager.shareXP(player, xp);
+                } else {
+                    levelManager.addXP(player, xp);
+                }
+                
                 dataManager.getPlayerData(player).incrementBlocksBroken();
             }
             
@@ -930,7 +919,12 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             if (xp > 0) {
                 double multiplier = permissionManager.getXPMultiplier(player);
                 xp = xp * multiplier;
-                levelManager.addXP(player, xp);
+                
+                if (partyManager.isInParty(player)) {
+                    partyManager.shareXP(player, xp);
+                } else {
+                    levelManager.addXP(player, xp);
+                }
             }
             
             double moneyEarned = configManager.getMobMoney(entityType);
@@ -1062,7 +1056,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             data.setLevel(targetLevel);
             data.setLastBreakthroughNotify(-1);
             
-            // Cập nhật lại attributes để áp dụng level mới
             attributeManager.updateAttributes(player);
             dataManager.savePlayerData(player);
             
@@ -1141,7 +1134,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         DataManager.PlayerData data = dataManager.getPlayerData(player);
         
-        // Reset và cập nhật attributes khi join
         attributeManager.lastAppliedLevel.remove(player.getUniqueId());
         attributeManager.updateAttributes(player);
         heartDisplayManager.updateHeartDisplay(player);
@@ -1212,6 +1204,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             sender.sendMessage(color("&e/schoollevel givecoins <player> <amount> &7- &fGive coins"));
             sender.sendMessage(color("&e/schoollevelgivebreakthrough <player> <level> &7- &fGive breakthrough item"));
             sender.sendMessage(color("&e/profile &7- &fOpen profile menu"));
+            sender.sendMessage(color("&e/party <create|invite|accept|leave|disband|kick|list> &7- &fParty system"));
         }
 
         private boolean handleMultiplier(CommandSender sender) {
@@ -1244,12 +1237,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 placeholderHook.loadLevelColors();
             }
             
-            // Reset attributes cho tất cả player online
             for (Player player : Bukkit.getOnlinePlayers()) {
                 DataManager.PlayerData data = dataManager.getPlayerData(player);
                 data.setLastBreakthroughNotify(-1);
                 
-                // Xóa cache attribute để cập nhật lại
                 attributeManager.lastAppliedLevel.remove(player.getUniqueId());
                 attributeManager.updateAttributes(player);
                 heartDisplayManager.updateHeartDisplay(player);
@@ -1323,7 +1314,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     }
                 }
                 
-                // Reset và cập nhật attributes
                 attributeManager.lastAppliedLevel.remove(target.getUniqueId());
                 attributeManager.updateAttributes(target);
                 dataManager.savePlayerData(target);
@@ -1373,6 +1363,72 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    // ==================== PARTY COMMAND ====================
+    public class PartyCommand implements CommandExecutor {
+        @Override
+        public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Only players can use this command!");
+                return true;
+            }
+            
+            Player player = (Player) sender;
+            
+            if (args.length == 0) {
+                sendHelp(player);
+                return true;
+            }
+            
+            switch (args[0].toLowerCase()) {
+                case "create":
+                    partyManager.createParty(player);
+                    break;
+                case "invite":
+                    if (args.length < 2) {
+                        player.sendMessage(color("&cUsage: /party invite <player>"));
+                        return true;
+                    }
+                    partyManager.invitePlayer(player, args[1]);
+                    break;
+                case "accept":
+                    partyManager.acceptInvite(player);
+                    break;
+                case "leave":
+                    partyManager.leaveParty(player);
+                    break;
+                case "disband":
+                    partyManager.disbandParty(player);
+                    break;
+                case "kick":
+                    if (args.length < 2) {
+                        player.sendMessage(color("&cUsage: /party kick <player>"));
+                        return true;
+                    }
+                    partyManager.kickMember(player, args[1]);
+                    break;
+                case "list":
+                case "info":
+                    partyManager.listParty(player);
+                    break;
+                default:
+                    sendHelp(player);
+                    break;
+            }
+            return true;
+        }
+        
+        private void sendHelp(Player player) {
+            player.sendMessage(color("&6&l✦ &fParty Commands &6✦"));
+            player.sendMessage(color("&e/party create &7- &fTạo party mới"));
+            player.sendMessage(color("&e/party invite <player> &7- &fMời người chơi"));
+            player.sendMessage(color("&e/party accept &7- &fChấp nhận lời mời"));
+            player.sendMessage(color("&e/party leave &7- &fRời khỏi party"));
+            player.sendMessage(color("&e/party disband &7- &fGiải tán party (Chủ party)"));
+            player.sendMessage(color("&e/party kick <player> &7- &fĐuổi thành viên (Chủ party)"));
+            player.sendMessage(color("&e/party list &7- &fXem danh sách party"));
+        }
+    }
+
     // ==================== GUI ====================
     public class ProfileGUI {
         private final Player player;
@@ -1408,7 +1464,6 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             double required = levelManager.getRequiredXP(level);
             double money = data.getMoney();
             
-            // Tính phần trăm thuộc tính đã tăng
             double healthBonus = attributeManager.getHealthBonusPercent(level);
             double damageBonus = attributeManager.getDamageBonusPercent(level);
             double speedBonus = attributeManager.getSpeedBonusPercent(level);
