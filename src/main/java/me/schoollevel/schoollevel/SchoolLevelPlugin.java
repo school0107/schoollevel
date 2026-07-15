@@ -86,6 +86,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         dataManager = new DataManager();
         levelManager = new LevelManager();
         attributeManager = new AttributeManager();
+        attributeManager.reloadConfig();
         xpManager = new XPManager();
         breakthroughManager = new BreakthroughManager();
         permissionManager = new PermissionManager();
@@ -122,10 +123,18 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     }
 
     private void registerCommands() {
-        Objects.requireNonNull(getCommand("profile")).setExecutor(new ProfileCommand());
-        Objects.requireNonNull(getCommand("schoollevel")).setExecutor(new SchoolLevelCommand());
-        Objects.requireNonNull(getCommand("schoollevelgivebreakthrough")).setExecutor(new GiveBreakthroughCommand());
-        Objects.requireNonNull(getCommand("party")).setExecutor(new PartyCommand());
+        if (getCommand("profile") != null) {
+            getCommand("profile").setExecutor(new ProfileCommand());
+        }
+        if (getCommand("schoollevel") != null) {
+            getCommand("schoollevel").setExecutor(new SchoolLevelCommand());
+        }
+        if (getCommand("schoollevelgivebreakthrough") != null) {
+            getCommand("schoollevelgivebreakthrough").setExecutor(new GiveBreakthroughCommand());
+        }
+        if (getCommand("party") != null) {
+            getCommand("party").setExecutor(new PartyCommand());
+        }
     }
 
     private void registerPlaceholderAPI() {
@@ -826,6 +835,22 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private static final String SPEED_MODIFIER = "schoollevel_speed";
         
         private final Map<UUID, Double> lastAppliedLevel = new HashMap<>();
+        
+        private double healthMultiplier = 0.01;
+        private double damageMultiplier = 0.01;
+        private double speedMultiplier = 0.001;
+        
+        public void reloadConfig() {
+            FileConfiguration config = getConfig();
+            healthMultiplier = config.getDouble("settings.attributes.health-multiplier", 0.01);
+            damageMultiplier = config.getDouble("settings.attributes.damage-multiplier", 0.01);
+            speedMultiplier = config.getDouble("settings.attributes.speed-multiplier", 0.001);
+            
+            getLogger().info("✅ Loaded attribute multipliers:");
+            getLogger().info("  - Health: " + healthMultiplier + " per level");
+            getLogger().info("  - Damage: " + damageMultiplier + " per level");
+            getLogger().info("  - Speed: " + speedMultiplier + " per level");
+        }
 
         public void updateAttributes(Player player) {
             DataManager.PlayerData data = dataManager.getPlayerData(player);
@@ -841,11 +866,13 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             
             removeAllModifiers(player);
             
-            double bonus = level * 0.01;
+            double healthBonus = level * healthMultiplier * 20.0;
+            double damageBonus = level * damageMultiplier;
+            double speedBonus = level * speedMultiplier;
             
-            applyModifier(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, 20.0 * bonus);
-            applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, 1.0 * bonus);
-            applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, 0.1 * bonus);
+            applyModifier(player, Attribute.GENERIC_MAX_HEALTH, HEALTH_MODIFIER, healthBonus);
+            applyModifier(player, Attribute.GENERIC_ATTACK_DAMAGE, DAMAGE_MODIFIER, damageBonus);
+            applyModifier(player, Attribute.GENERIC_MOVEMENT_SPEED, SPEED_MODIFIER, speedBonus);
             
             lastAppliedLevel.put(uuid, (double) level);
             heartDisplayManager.updateHeartDisplay(player);
@@ -877,16 +904,20 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
         
         public double getHealthBonusPercent(int level) {
-            return level * 0.01 * 100;
+            return level * healthMultiplier * 100;
         }
         
         public double getDamageBonusPercent(int level) {
-            return level * 0.01 * 100;
+            return level * damageMultiplier * 100;
         }
         
         public double getSpeedBonusPercent(int level) {
-            return level * 0.01 * 100;
+            return level * speedMultiplier * 100;
         }
+        
+        public double getHealthMultiplier() { return healthMultiplier; }
+        public double getDamageMultiplier() { return damageMultiplier; }
+        public double getSpeedMultiplier() { return speedMultiplier; }
     }
 
     // ==================== XP MANAGER ====================
@@ -1232,6 +1263,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             levelManager.reloadConfig();
             breakthroughManager.loadBreakthroughConfig();
             heartDisplayManager.loadConfig();
+            attributeManager.reloadConfig();
             
             if (placeholderHook != null) {
                 placeholderHook.loadLevelColors();
