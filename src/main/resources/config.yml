@@ -13,6 +13,18 @@ settings:
   # ... các settings khác giữ nguyên ...
   # Hệ số nhân XP mỗi cấp
   level-xp-multiplier: 1.1
+  attributes:
+    # Máu tối đa (mỗi cấp tăng bao nhiêu % của 20 máu)
+    # 0.01 = 1% mỗi cấp (Level 100 = +100% = 40 máu)
+    health-multiplier: 0.01
+    
+    # Sát thương cận chiến (mỗi cấp tăng bao nhiêu)
+    # 0.01 = 0.01 sát thương mỗi cấp (Level 100 = +1 sát thương)
+    damage-multiplier: 0.01
+    
+    # Tốc độ di chuyển (mỗi cấp tăng bao nhiêu)
+    # 0.001 = 0.001 tốc độ mỗi cấp (Level 100 = +0.1 tốc độ)
+    speed-multiplier: 0.001
   
   currency:
     symbol: "💰 "
