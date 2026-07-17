@@ -67,6 +67,10 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
     public final int[] BREAKTHROUGH_LEVELS = {100, 200, 300, 400, 500};
 
+    // ===== AUTO SAVE TASK =====
+    private BukkitRunnable autoSaveTask;
+    private static final int SAVE_INTERVAL = 600; // 30 giây (600 ticks)
+
     @Override
     public void onEnable() {
         long startTime = System.currentTimeMillis();
@@ -103,8 +107,12 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        // Save all data before disable
         if (dataManager != null) {
             dataManager.saveAllData();
+        }
+        if (autoSaveTask != null) {
+            autoSaveTask.cancel();
         }
         getLogger().info("§c❌ SchoolLevel Plugin disabled!");
     }
@@ -147,6 +155,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
     }
 
     private void startScheduledTasks() {
+        // Action bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -158,6 +167,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         
         heartDisplayManager.startHeartUpdateTask();
         
+        // XP bar updater
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -166,6 +176,17 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 }
             }
         }.runTaskTimer(this, 0, XP_BAR_UPDATE_INTERVAL);
+        
+        // Auto save task - save data every 30 seconds
+        autoSaveTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (dataManager != null && !dataManager.isDirty()) {
+                    dataManager.saveAllData();
+                }
+            }
+        };
+        autoSaveTask.runTaskTimer(this, SAVE_INTERVAL, SAVE_INTERVAL);
     }
 
     private void updateVanillaXPBar(Player player) {
@@ -605,6 +626,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         private final Map<UUID, PlayerData> playerDataMap = new ConcurrentHashMap<>();
         private final File dataFile;
         private FileConfiguration dataConfig;
+        private boolean dirty = false; // Track if data needs saving
 
         public DataManager() {
             this.dataFile = new File(getDataFolder(), "data.yml");
@@ -627,11 +649,23 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             return playerDataMap.computeIfAbsent(player.getUniqueId(), PlayerData::new);
         }
 
-        public void savePlayerData(Player player) { savePlayerData(player.getUniqueId()); }
+        public void markDirty() {
+            this.dirty = true;
+        }
+
+        public boolean isDirty() {
+            return dirty;
+        }
+
+        public void savePlayerData(Player player) {
+            if (player == null) return;
+            savePlayerData(player.getUniqueId());
+        }
 
         private void savePlayerData(UUID uuid) {
             PlayerData data = playerDataMap.get(uuid);
             if (data == null) return;
+            
             String path = uuid.toString();
             dataConfig.set(path + ".level", data.getLevel());
             dataConfig.set(path + ".xp", data.getXp());
@@ -641,11 +675,28 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             List<Integer> brokenLevels = new ArrayList<>(data.getBrokenThroughLevels());
             dataConfig.set(path + ".brokenThroughLevels", brokenLevels);
             
-            saveData();
+            dirty = true;
         }
 
         public void saveAllData() {
-            for (UUID uuid : playerDataMap.keySet()) savePlayerData(uuid);
+            if (!dirty) return;
+            
+            for (UUID uuid : playerDataMap.keySet()) {
+                PlayerData data = playerDataMap.get(uuid);
+                if (data == null) continue;
+                
+                String path = uuid.toString();
+                dataConfig.set(path + ".level", data.getLevel());
+                dataConfig.set(path + ".xp", data.getXp());
+                dataConfig.set(path + ".blocksBroken", data.getBlocksBroken());
+                dataConfig.set(path + ".money", data.getMoney());
+                
+                List<Integer> brokenLevels = new ArrayList<>(data.getBrokenThroughLevels());
+                dataConfig.set(path + ".brokenThroughLevels", brokenLevels);
+            }
+            
+            saveData();
+            dirty = false;
         }
 
         private void loadAllData() {
@@ -668,7 +719,9 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
         }
 
         private void saveData() {
-            try { dataConfig.save(dataFile); } catch (Exception e) {
+            try { 
+                dataConfig.save(dataFile); 
+            } catch (Exception e) {
                 getLogger().log(Level.SEVERE, "Failed to save data", e);
             }
         }
@@ -677,6 +730,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             dataConfig = YamlConfiguration.loadConfiguration(dataFile);
             playerDataMap.clear();
             loadAllData();
+            dirty = false;
         }
 
         public class PlayerData {
@@ -766,7 +820,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     if (data.getLastBreakthroughNotify() != nextBreakthrough) {
                         breakthroughManager.notifyBreakthrough(player, nextBreakthrough);
                         data.setLastBreakthroughNotify(nextBreakthrough);
-                        dataManager.savePlayerData(player);
+                        dataManager.markDirty();
                     }
                     return;
                 }
@@ -786,7 +840,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             }
 
             attributeManager.updateAttributes(player);
-            dataManager.savePlayerData(player);
+            dataManager.markDirty();
             updateVanillaXPBar(player);
         }
         
@@ -935,6 +989,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 }
                 
                 dataManager.getPlayerData(player).incrementBlocksBroken();
+                dataManager.markDirty();
             }
             
             double moneyEarned = configManager.getCalculatedBlockMoney(player, material);
@@ -972,8 +1027,8 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 economy.depositPlayer(player, amount);
             } else {
                 data.addMoney(amount);
+                dataManager.markDirty();
             }
-            dataManager.savePlayerData(player);
         }
     }
 
@@ -1081,6 +1136,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     return;
                 }
                 data.setMoney(data.getMoney() - requiredMoney);
+                dataManager.markDirty();
             }
 
             data.addBrokenThrough(targetLevel);
@@ -1088,7 +1144,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
             data.setLastBreakthroughNotify(-1);
             
             attributeManager.updateAttributes(player);
-            dataManager.savePlayerData(player);
+            dataManager.markDirty();
             
             item.setAmount(item.getAmount() - 1);
             
@@ -1302,6 +1358,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                     economy.depositPlayer(target, amount);
                 } else {
                     dataManager.getPlayerData(target).addMoney(amount);
+                    dataManager.markDirty();
                 }
                 sender.sendMessage(color("&a✅ Gave " + DF_MONEY.format(amount) + " coins to " + target.getName()));
                 target.sendMessage(color("&6&l💰 &fBạn nhận được &6" + DF_MONEY.format(amount) + " &fcoins!"));
@@ -1348,7 +1405,7 @@ public class SchoolLevelPlugin extends JavaPlugin implements Listener {
                 
                 attributeManager.lastAppliedLevel.remove(target.getUniqueId());
                 attributeManager.updateAttributes(target);
-                dataManager.savePlayerData(target);
+                dataManager.markDirty();
                 updateVanillaXPBar(target);
                 
                 sender.sendMessage(color("&a✅ Set " + target.getName() + "'s level to " + level));
